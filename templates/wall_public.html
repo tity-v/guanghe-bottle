@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}{{ wall_user.display_name() }} 的安利墙 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="wall-header">
+    <h2>🖼️ {{ wall_user.display_name() }} 的安利墙</h2>
+    <button class="btn btn-secondary btn-sm" onclick="copyShareLink('wall',{{ wall_user.id }})">📤 分享</button>
+</div>
+{% if bottles %}
+<div class="wall-grid nine">
+    {% for b in bottles %}
+    <a href="/bottle/{{ b.id }}" class="wall-card">
+        <img src="/{{ b.image_path }}" alt="{{ b.title }}">
+        <div class="wc-label">{{ b.title[:12] }}</div>
+    </a>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center" style="padding:60px 0;color:var(--text-muted);">
+    <p style="font-size:18px;">🏜️ 还没有收藏</p>
+</div>
+{% endif %}
+<p class="text-center mt-16">
+    <a href="/auth/register?via={{ wall_user.referral_code }}" class="btn btn-primary">🌊 一起来玩</a>
+</p>
+{% endblock %}

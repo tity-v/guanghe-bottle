@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}投递漂流瓶 · 光核安利漂流瓶{% endblock %}
+{% block body_class %}bg-with-bottle{% endblock %}
+{% block content %}
+
+<form method="POST" action="/throw" enctype="multipart/form-data" id="throwForm" class="throw-longform">
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+    {# ── 1. 选分类 ── #}
+    <section class="tf-section">
+        <h2 class="tf-heading">🏷️ 选择安利分类</h2>
+        <div class="cat-accordion">
+            {% for cat in categories %}
+            <div class="cat-bar" data-category="{{ cat.id }}" onclick="toggleCategory(this,'{{ cat.id }}')">
+                <input type="radio" name="category" value="{{ cat.id }}" required>
+                <div class="cat-bar-top">
+                    <span class="cat-bar-icon">{{ cat.icon }}</span>
+                    <span class="cat-bar-name">{{ cat.name }}</span>
+                    <span class="cat-bar-arrow">▸</span>
+                </div>
+                <div class="cat-bar-desc">{{ cat.description }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    {# ── 2. 传图 ── #}
+    <section class="tf-section">
+        <div class="drop-zone" id="dropZone">
+            <input type="file" name="image" accept="image/jpeg,image/png,image/webp" required id="imageInput">
+            <span class="dz-icon">🖼️</span>
+            <span>点击上传截图</span>
+        </div>
+        <div class="img-preview hidden" id="imgPreview">
+            <img src="" alt="预览" id="previewImg">
+        </div>
+    </section>
+
+    {# ── 3. 填内容 ── #}
+    <section class="tf-section">
+        <h2 class="tf-heading">✏️ 填写安利内容</h2>
+
+        <div class="form-g">
+            <label>📌 标题 <span class="hint">1-30字</span></label>
+            <input type="text" name="title" class="input" placeholder="给你的安利起个标题" minlength="1" maxlength="30" required>
+        </div>
+        <div class="form-g">
+            <label>🎮 游戏名称</label>
+            <input type="text" name="game_name" class="input" placeholder="安利的是哪款游戏？" required>
+        </div>
+        <div class="form-g">
+            <label id="fieldALabel">📍 请先选择分类</label>
+            <input type="text" name="field_a" class="input" placeholder="选择分类后自动切换提示" minlength="5" maxlength="200" required id="fieldAInput">
+            <span class="hint">5-200字</span>
+        </div>
+        <div class="form-g">
+            <label id="fieldBLabel">📍 请先选择分类</label>
+            <textarea name="field_b" class="input" placeholder="选择分类后自动切换提示" minlength="5" maxlength="200" required id="fieldBInput"></textarea>
+            <span class="hint">5-200字</span>
+        </div>
+        <div class="form-g">
+            <label>💬 强力安利 <span class="hint">5-200字</span></label>
+            <textarea name="recommendation" class="input" placeholder="用一句话抓住TA的心！主题为安利哦~" minlength="5" maxlength="200" required></textarea>
+        </div>
+    </section>
+
+    {# ── 提交 ── #}
+    <div class="tf-submit">
+        <p class="tf-submit-hint">🌊 确认填写无误后，扔出你的漂流瓶</p>
+        <button type="button" id="throwSubmitBtn" class="btn btn-amber btn-full" onclick="doThrow()" style="padding:16px;font-size:18px;">
+            🌊 扔出漂流瓶
+        </button>
+    </div>
+</form>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+var CAT_DATA = {{ categories | tojson | safe }};
+
+function toggleCategory(bar, cid) {
+    // 关闭其他已展开的
+    document.querySelectorAll('.cat-bar.open').forEach(function(b){
+        if (b !== bar) b.classList.remove('open');
+    });
+    // 切换当前
+    bar.classList.toggle('open');
+    bar.querySelector('input').checked = true;
+
+    var cat = CAT_DATA.find(function(c){ return c.id === cid; });
+    if (cat) {
+        document.getElementById('fieldALabel').textContent = '📍 ' + cat.field_a_label;
+        document.getElementById('fieldBLabel').textContent = '📍 ' + cat.field_b_label;
+        document.getElementById('fieldAInput').placeholder = cat.field_a_hint;
+        document.getElementById('fieldBInput').placeholder = cat.field_b_hint;
+    }
+}
+
+document.getElementById('imageInput').addEventListener('change', function(e){
+    var f = e.target.files[0];
+    if (f) {
+        var reader = new FileReader();
+        reader.onload = function(ev){
+            document.getElementById('previewImg').src = ev.target.result;
+            document.getElementById('imgPreview').classList.remove('hidden');
+            document.getElementById('dropZone').classList.add('has-file');
+            document.getElementById('dropZone').querySelector('.dz-icon').textContent = '📷';
+            document.getElementById('dropZone').querySelector('span:last-child').textContent = '已选择：'+f.name;
+        };
+        reader.readAsDataURL(f);
+    }
+});
+</script>
+{% endblock %}

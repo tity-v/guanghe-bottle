@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}任务中心 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="task-header">
+    <div class="big-num">{{ remaining }}</div>
+    <div class="big-label">今日剩余打捞次数</div>
+    <p style="font-size:12px;color:var(--text-dim);margin-top:4px;">
+        基础 {{ daily_limit }} 次 + 任务奖励 · 每日总上限 {{ daily_max }} 次 · 已用 {{ today_used }} 次
+    </p>
+</div>
+<div class="task-cards">
+    {# 任务 1：投递 #}
+    <div class="task-card">
+        <div class="t-info">
+            <h4>🎯 投递漂流瓶</h4>
+            <p>投递一个游戏安利</p>
+        </div>
+        <div>
+            <span class="t-reward">+{{ throw_reward }}次</span>
+            {% if task.throw_claimed %}
+            <span class="task-done">✅ 已领</span>
+            {% else %}
+            <a href="/throw" class="btn btn-primary btn-sm" style="margin-left:8px;">去投递</a>
+            {% endif %}
+        </div>
+    </div>
+
+    {# 任务 2：分享 #}
+    <div class="task-card">
+        <div class="t-info">
+            <h4>📤 分享活动</h4>
+            <p>分享链接给好友（社群/朋友圈）</p>
+        </div>
+        <div>
+            <span class="t-reward">+{{ share_reward }}次</span>
+            {% if task.share_claimed %}
+            <span class="task-done">✅ 已领</span>
+            {% elif has_shared %}
+            <button class="btn btn-primary btn-sm" style="margin-left:8px;" onclick="claimShareReward()">🎁 领取</button>
+            {% else %}
+            <button class="btn btn-secondary btn-sm" style="margin-left:8px;" onclick="copyShareLink('activity')">📋 分享</button>
+            {% endif %}
+        </div>
+    </div>
+
+    {# 任务 3：拉新 #}
+    <div class="task-card">
+        <div class="t-info">
+            <h4>👥 邀请好友</h4>
+            <p>好友通过你的链接注册（每日上限 {{ referral_max }} 人）</p>
+        </div>
+        <div>
+            <span class="t-reward">+{{ referral_reward }}次/人</span>
+            <span style="margin-left:8px;font-size:12px;color:var(--text-dim);">{{ task.referral_count }}/{{ referral_max }}</span>
+        </div>
+    </div>
+</div>
+<p class="text-center mt-16" style="font-size:12px;color:var(--text-muted);">
+    💡 分享链接 → 好友注册 → 回此页领奖励
+</p>
+{% endblock %}

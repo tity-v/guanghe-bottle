@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}注册 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="auth-box">
+    <h2>🎉 加入漂流</h2>
+    <p class="sub">注册成为船员</p>
+    {% if ref_id or via %}
+    <div class="ref-notice">🎁 好友邀请，注册后TA将获得奖励</div>
+    {% endif %}
+    <form method="POST" action="/auth/register{% if via %}?via={{ via }}{% elif ref_id %}?ref={{ ref_id }}{% endif %}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-g">
+            <label>📧 邮箱</label>
+            <input type="email" name="email" class="input" placeholder="请输入邮箱" required>
+        </div>
+        <div class="form-g">
+            <label>😎 昵称</label>
+            <input type="text" name="nickname" class="input" placeholder="给自己起个名字（选填）">
+        </div>
+        <div class="form-g">
+            <label>🔒 密码</label>
+            <input type="password" name="password" class="input" placeholder="至少6位" minlength="6" required>
+        </div>
+        <div class="form-g">
+            <label>🔒 确认密码</label>
+            <input type="password" name="password_confirm" class="input" placeholder="再次输入" minlength="6" required>
+        </div>
+        <div class="form-g">
+            <label>🎫 推广码（加入光核社群获取）</label>
+            <input type="text" name="promo_code" class="input" placeholder="选填">
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" style="padding:14px;font-size:16px;">🚀 注册</button>
+    </form>
+    <p class="switch">已有账号？<a href="{{ url_for('login') }}">登录</a></p>
+</div>
+{% endblock %}

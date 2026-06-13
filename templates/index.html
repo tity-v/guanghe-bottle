@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}光核安利漂流瓶 · 首页{% endblock %}
+{% block content %}
+<div class="home-view">
+    <img src="{{ url_for('static', filename='images/logo-title.png') }}" class="hero-logo" alt="光核安利漂流瓶">
+    <p class="hero-tag">把故事装进瓶子，让它漂向星海</p>
+
+    <div class="action-strip">
+        <a href="{% if current_user.is_authenticated %}/throw{% else %}{{ url_for('login') }}{% endif %}" class="img-btn">
+            <img src="{{ url_for('static', filename='images/btn-throw.png') }}" alt="投递漂流瓶">
+        </a>
+        <a href="{% if current_user.is_authenticated %}/salvage{% else %}{{ url_for('login') }}{% endif %}" class="img-btn">
+            <img src="{{ url_for('static', filename='images/bottle-retouch.png') }}" alt="打捞漂流瓶">
+        </a>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <div class="home-stats">
+        <p>今日剩余打捞：<strong>{{ remaining_salvage }}</strong> 次</p>
+        <p class="home-links">
+            <a href="/tasks" class="btn btn-secondary btn-sm">📋 做任务</a>
+            <a href="/wall" class="btn btn-secondary btn-sm">🖼️ 安利墙</a>
+        </p>
+    </div>
+    {% else %}
+    <div class="home-stats">
+        <p>已有 <strong>{{ total_bottles }}</strong> 个漂流瓶在星海中漂流</p>
+        <p class="home-links">
+            <a href="/auth/register{% if ref_id %}?ref={{ ref_id }}{% endif %}">注册</a>
+            或
+            <a href="/auth/login">登录</a>
+            开始漂流
+        </p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

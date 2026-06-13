@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}打捞漂流瓶 · 光核安利漂流瓶{% endblock %}
+{% block body_class %}bg-no-bottle{% endblock %}
+{% block content %}
+<div class="salvage-view">
+    <h2 style="margin-bottom:4px;">🎣 打捞漂流瓶</h2>
+    <p style="color:var(--text-dim);margin-bottom:20px;">随机捞起一个陌生人的游戏安利</p>
+    <div class="count-pill">今日剩余：<strong id="remainingCount">{{ remaining }}</strong> 次</div>
+
+    {% if remaining > 0 %}
+    <a href="javascript:void(0)" class="img-btn" id="salvageBtn" onclick="doSalvage()">
+        <img src="{{ url_for('static', filename='images/bottle-retouch.png') }}" alt="打捞漂流瓶">
+    </a>
+    {% else %}
+    <p style="color:var(--amber);font-size:16px;">😢 次数已用完</p>
+    <a href="/tasks" class="btn btn-primary mt-8">📋 做任务获取次数</a>
+    {% endif %}
+
+    <div id="salvageResult" class="mt-24 hidden"></div>
+</div>
+{% endblock %}

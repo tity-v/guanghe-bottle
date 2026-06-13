@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}登录 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="auth-box">
+    <h2>🌊 欢迎回来</h2>
+    <p class="sub">登录后继续漂流</p>
+    <form method="POST" action="{{ url_for('login') }}">
+        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+        <div class="form-g">
+            <label>📧 邮箱</label>
+            <input type="email" name="email" class="input" placeholder="请输入邮箱" required>
+        </div>
+        <div class="form-g">
+            <label>🔒 密码</label>
+            <input type="password" name="password" class="input" placeholder="请输入密码" required>
+        </div>
+        <button type="submit" class="btn btn-primary btn-full" style="padding:14px;font-size:16px;">🌊 登录</button>
+    </form>
+    <p class="switch">没有账号？<a href="{{ url_for('register') }}">立即注册</a></p>
+</div>
+{% endblock %}

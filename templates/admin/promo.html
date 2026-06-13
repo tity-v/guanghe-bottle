@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block title %}推广码管理 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="admin-grid">
+    {% include "admin/_sidebar.html" %}
+    <div class="admin-main">
+        <h2>🎫 推广码管理</h2>
+
+        <form method="POST" class="promo-form mb-24">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="action" value="generate">
+            <div class="form-row">
+                <div class="form-g">
+                    <label>生成数量</label>
+                    <input type="number" name="count" class="input" value="5" min="1" max="50">
+                </div>
+                <div class="form-g">
+                    <label>渠道名称</label>
+                    <input type="text" name="channel_name" class="input" placeholder="如：光核B站、光核QQ群">
+                </div>
+                <div class="form-g">
+                    <label>单码使用上限</label>
+                    <input type="number" name="max_uses" class="input" value="1" min="1" max="100">
+                </div>
+                <button type="submit" class="btn btn-primary">生成推广码</button>
+            </div>
+        </form>
+
+        <h3>最近生成的推广码</h3>
+        {% if codes %}
+        <div class="promo-list">
+            {% for c in codes %}
+            <div class="promo-item">
+                <div>
+                    <code>{{ c.code }}</code>
+                    <div class="pm-meta">
+                        渠道：{{ c.channel_name or '未指定' }}
+                        · 使用：{{ c.use_count }}/{{ c.max_uses if c.max_uses else '∞' }}
+                        · {{ '✅ 可用' if c.is_available else '❌ 失效' }}
+                    </div>
+                </div>
+                <div>
+                    {% if c.is_active %}
+                    <form method="POST" style="display:inline;">
+                        <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="action" value="deactivate">
+                        <input type="hidden" name="code_id" value="{{ c.id }}">
+                        <button type="submit" class="btn btn-secondary btn-sm">停用</button>
+                    </form>
+                    {% endif %}
+                    {% if c.used_by %}
+                    <span style="font-size:11px;color:var(--text-muted);margin-left:8px;">用户ID: {{ c.used_by }}</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-center" style="color:var(--text-muted);">暂无推广码</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

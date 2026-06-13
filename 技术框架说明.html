@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>光核安利漂流瓶 — 技术框架说明</title>
+<style>
+body{font-family:"Microsoft YaHei","PingFang SC",sans-serif;max-width:800px;margin:40px auto;padding:0 20px;color:#222;line-height:1.8;font-size:15px}
+h1{text-align:center;font-size:26px;margin-bottom:4px}
+h2{font-size:20px;border-bottom:2px solid #2980b9;padding-bottom:6px;margin-top:32px;color:#1a5276}
+h3{font-size:17px;margin-top:20px;color:#2c3e50}
+table{width:100%;border-collapse:collapse;margin:12px 0 20px;font-size:14px}
+th,td{border:1px solid #bbb;padding:8px 12px;text-align:left}
+th{background:#d6eaf8;font-weight:700}
+tr:nth-child(even){background:#f8f9fa}
+code{background:#eef;padding:1px 5px;border-radius:3px;font-size:13px}
+pre{background:#f4f4f4;padding:12px 16px;border-left:3px solid #2980b9;font-size:13px;line-height:1.6;overflow-x:auto}
+.note{background:#fff3cd;padding:10px 14px;border-left:3px solid #f0ad4e;margin:12px 0;font-size:13px}
+</style>
+</head>
+<body>
+
+<h1>🌊 光核安利漂流瓶<br><small style="font-weight:400;font-size:16px;color:#666">技术框架说明 v5 "StarrySea"</small></h1>
+
+<!-- ==================== 一 ==================== -->
+<h2>一、项目简介</h2>
+<p>一个游戏安利主题的 H5 社交活动网站。用户可以投递"漂流瓶"（游戏安利卡片）、随机打捞别人的瓶子、收藏到个人安利墙、分享拉新获取奖励。</p>
+
+<!-- ==================== 二 ==================== -->
+<h2>二、技术选型</h2>
+<table>
+<tr><th width="100">层级</th><th>技术</th></tr>
+<tr><td>后端框架</td><td>Python 3.12 + Flask（轻量 Web 框架）</td></tr>
+<tr><td>数据库</td><td>SQLite + SQLAlchemy ORM（对象关系映射）</td></tr>
+<tr><td>前端</td><td>原生 HTML / CSS / JavaScript + Jinja2 模板引擎</td></tr>
+<tr><td>图片处理</td><td>Pillow（上传后自动生成缩略图）</td></tr>
+<tr><td>用户认证</td><td>Flask-Login（会话管理，支持记住我）</td></tr>
+<tr><td>总代码量</td><td>约 2900 行（Python 1356 + 前端 1500+）</td></tr>
+</table>
+
+<!-- ==================== 三 ==================== -->
+<h2>三、项目结构（MVC 分层）</h2>
+<pre>
+guanghe-bottle-v5/
+├── app.py              ← 控制器，所有路由和业务逻辑（915行）
+├── models.py           ← 模型层，8张数据表定义（249行）
+├── config.py           ← 活动规则、7大分类配置（192行）
+├── seed_data.py        ← 预设种子数据（初始瓶子）
+├── sensitive_words.txt ← 敏感词库
+├── instance/
+│   └── bottle.db       ← SQLite 数据库文件
+├── static/
+│   ├── css/style.css   ← 全局样式（492行）
+│   ├── js/main.js      ← 前端交互逻辑（325行）
+│   └── images/         ← 素材（背景/按钮/Logo/信纸等）
+├── templates/          ← 12个页面模板
+│   ├── base.html       ← 父模板（导航栏/底部栏/规则弹窗）
+│   ├── index.html      ← 首页
+│   ├── throw.html      ← 投递页（7分类长表单）
+│   ├── salvage.html    ← 打捞页
+│   ├── wall.html       ← 我的安利墙
+│   ├── wall_public.html← 公开安利墙（无需登录可浏览）
+│   ├── bottle_detail.html  ← 瓶子详情页
+│   ├── shared_bottle.html  ← 分享瓶页面（无需登录）
+│   ├── tasks.html      ← 任务中心
+│   ├── login.html      ← 登录页
+│   ├── register.html   ← 注册页
+│   └── admin/          ← 管理后台（仪表盘/审核/数据/推广码）
+└── uploads/bottles/    ← 用户上传的截图（按年/月分目录）
+</pre>
+
+<!-- ==================== 四 ==================== -->
+<h2>四、数据库设计（8 张表）</h2>
+
+<h3>4.1 表关系总览</h3>
+<pre>
+users（用户）
+  │
+  ├── 1:N → drift_bottles（漂流瓶）
+  ├── 1:N → salvage_records（打捞记录）
+  ├── 1:N → daily_tasks（每日任务）
+  ├── 1:N → share_records（分享记录，作为分享者）
+  └── 1:N → admin_logs（管理员日志）
+
+drift_bottles（漂流瓶）
+  └── 1:N → salvage_records（被打捞记录）
+  └── 1:N → bottle_likes（点赞记录）
+</pre>
+
+<h3>4.2 各表字段</h3>
+
+<table>
+<tr><th>表名</th><th>核心字段</th><th>说明</th></tr>
+<tr>
+  <td><b>users</b><br>用户表</td>
+  <td>id, email(唯一), nickname(唯一), password_hash, referral_code(唯一), referrer_id, is_admin, created_at</td>
+  <td>密码哈希存储。referral_code 用于分享拉新链接。referrer_id 指向邀请人。</td>
+</tr>
+<tr>
+  <td><b>drift_bottles</b><br>漂流瓶表</td>
+  <td>id, user_id, image_path, thumbnail_path, title, game_name, field_a, field_b, recommendation, category, is_approved, is_preset, created_at</td>
+  <td>category 取 7 大分类 ID。is_preset 标记是否为系统预设瓶。is_approved 标记审核状态。</td>
+</tr>
+<tr>
+  <td><b>salvage_records</b><br>打捞记录表</td>
+  <td>id, user_id, bottle_id, is_saved_to_wall, salvaged_at</td>
+  <td><b>联合唯一约束</b>(user_id, bottle_id)：同一用户不能重复打捞同一个瓶子。</td>
+</tr>
+<tr>
+  <td><b>bottle_likes</b><br>点赞表</td>
+  <td>id, user_id, bottle_id, created_at</td>
+  <td>联合唯一约束：同一用户只能点赞一次。再次点击取消点赞。</td>
+</tr>
+<tr>
+  <td><b>daily_tasks</b><br>每日任务表</td>
+  <td>id, user_id, task_date, throw_claimed, share_claimed, referral_count</td>
+  <td>联合唯一约束(user_id, task_date)：每个用户每天一条记录。0:00 自动新建。</td>
+</tr>
+<tr>
+  <td><b>share_records</b><br>分享记录表</td>
+  <td>id, sharer_id, shared_type, shared_target_id, new_user_id, created_at</td>
+  <td>shared_type 取值：activity / bottle / wall。拉新成功时 new_user_id 不为空。</td>
+</tr>
+<tr>
+  <td><b>promo_codes</b><br>推广码表</td>
+  <td>id, code(唯一), channel_name, max_uses, use_count, is_active, used_by, used_at</td>
+  <td>max_uses=0 表示无限次。由光核各渠道分发。</td>
+</tr>
+<tr>
+  <td><b>admin_logs</b><br>管理员日志</td>
+  <td>id, admin_id, action, target_type, target_id, note, created_at</td>
+  <td>记录审核通过/驳回/删除等操作，用于追溯。</td>
+</tr>
+</table>
+
+<!-- ==================== 五 ==================== -->
+<h2>五、核心业务逻辑</h2>
+
+<h3>5.1 漂流瓶生命周期</h3>
+<pre>
+用户投递 → 敏感词自动检测 → 审核（自动/人工）→ 进入漂流池
+                                                ↓
+                                          其他用户随机打捞
+                                                ↓
+                                    查看详情 / 点赞 / 收藏到安利墙
+                                                ↓
+                                          分享给好友（拉新）
+</pre>
+
+<h3>5.2 打捞算法</h3>
+<ol>
+  <li>排除该用户自己投的瓶子</li>
+  <li>排除该用户已经捞过的瓶子（数据库唯一约束保证）</li>
+  <li><b>优先抽取非预设瓶</b>（真实用户投递的）</li>
+  <li>随机排序后取一个</li>
+  <li>如果非预设瓶被捞完了，<b>回退到预设瓶</b></li>
+</ol>
+
+<h3>5.3 任务与奖励计算</h3>
+<table>
+<tr><th>获取途径</th><th>奖励次数</th><th>限制</th></tr>
+<tr><td>基础额度</td><td>1 次/天</td><td>—</td></tr>
+<tr><td>投递一个瓶子</td><td>+1 次</td><td>每日 1 次</td></tr>
+<tr><td>分享活动/瓶子/安利墙</td><td>+1 次</td><td>每日首次自动领取</td></tr>
+<tr><td>拉新成功（每人）</td><td>+2 次</td><td>每日最多 2 人</td></tr>
+</table>
+<p><b>计算公式：</b></p>
+<pre>
+剩余次数 = min(基础1 + 投递奖励 + 分享奖励 + 拉新人数×2, 总上限) - 今日已用次数
+每日 0:00 重置所有任务进度，未用次数不累积
+</pre>
+
+<h3>5.4 分享拉新机制</h3>
+<table>
+<tr><th width="140">环节</th><th>说明</th></tr>
+<tr><td>手机端分享</td><td>调用 <code>navigator.share()</code>，弹出系统原生分享面板（微信/朋友圈/QQ等）</td></tr>
+<tr><td>桌面端分享</td><td>自动复制专属链接到剪贴板</td></tr>
+<tr><td>链接格式</td><td><code>/?via=tity</code>（活动首页）、<code>/s/bottle/3?via=tity</code>（某个瓶子）、<code>/s/wall/5?via=tity</code>（某人安利墙）</td></tr>
+<tr><td>拉新判定</td><td>新用户注册时 URL 中带的 <code>?via=</code> 参数对应分享者的 referral_code，自动记录邀请关系</td></tr>
+<tr><td>验证方式</td><td>信任制（H5 网页无法验证第三方 App 内的分享行为，此为行业通用做法）</td></tr>
+</table>
+
+<!-- ==================== 六 ==================== -->
+<h2>六、7 大内容分类</h2>
+<table>
+<tr><th>分类</th><th>字段A（提示）</th><th>字段B（提示）</th></tr>
+<tr><td>📸 炸裂截图</td><td>这张图发生的前提（离谱状况/构图时机…）</td><td>最绝的地方在于（难以达成的情景/物理崩坏…）</td></tr>
+<tr><td>🌅 绝美场景</td><td>打卡地/时机（黄昏/隐藏山峰…）</td><td>这画面神在哪里（体积光/粒子雾/巨物感…）</td></tr>
+<tr><td>💖 人物塑造</td><td>TA是谁（主角捏脸/NPC/BOSS…）</td><td>为什么印象深刻（模型细节/高光行为/意难平…）</td></tr>
+<tr><td>🎨 美术鉴赏</td><td>皮肤/外观名（武器名/涂装…）</td><td>设计最戳我的点（纹样/色彩搭配/材质…）</td></tr>
+<tr><td>🎬 剧情放映</td><td>这是什么情节（告别/反转…）</td><td>当时的心理活动（头皮发麻/爆哭/震撼…）</td></tr>
+<tr><td>⚔️ 硬核博弈</td><td>当时的境况（队友全倒/一丝血…）</td><td>决定性瞬间（极限操作/完美弹反…）</td></tr>
+<tr><td>🌟 屏幕外回响</td><td>经历时的现实背景（开黑/毕业/低谷期…）</td><td>游戏/人给了我什么（陪伴/治愈/力量…）</td></tr>
+</table>
+
+<!-- ==================== 七 ==================== -->
+<h2>七、安全与防刷</h2>
+<table>
+<tr><th width="150">措施</th><th>实现方式</th></tr>
+<tr><td>CSRF 防护</td><td>所有 POST 请求校验动态 token（session + header 双重验证）</td></tr>
+<tr><td>密码安全</td><td>Werkzeug <code>generate_password_hash()</code> 哈希存储，不明文保存</td></tr>
+<tr><td>敏感词过滤</td><td>投递时自动逐词匹配 <code>sensitive_words.txt</code>，命中则标记待审</td></tr>
+<tr><td>内容审核</td><td>管理员后台可查看待审列表，支持通过/驳回（附备注）/删除</td></tr>
+<tr><td>投递冷却</td><td>10 秒内禁止同一用户重复投递</td></tr>
+<tr><td>打捞冷却</td><td>2 秒内禁止同一用户重复打捞</td></tr>
+<tr><td>重复打捞防护</td><td>数据库联合唯一约束，同一用户不能捞同一个瓶子两次</td></tr>
+<tr><td>拉新上限</td><td>每人每日最多通过拉新获得 2×2=4 次额外打捞</td></tr>
+<tr><td>图片安全</td><td>仅允许 JPG/PNG/WebP 格式，最大 20MB，服务器端校验</td></tr>
+</table>
+
+<!-- ==================== 八 ==================== -->
+<h2>八、关键配置参数</h2>
+<pre>
+# config.py — 活动规则一键可调
+
+DAILY_SALVAGE_LIMIT     = 1      # 每日基础打捞次数
+TASK_THROW_REWARD       = 1      # 投递奖励（次数）
+TASK_SHARE_REWARD       = 1      # 分享奖励（次数）
+TASK_REFERRAL_REWARD    = 2      # 拉新奖励（每人，次数）
+TASK_REFERRAL_DAILY_MAX = 2      # 每日拉新人数上限
+DAILY_SALVAGE_MAX       = 1000   # 每日总次数上限
+
+THROW_COOLDOWN_SECONDS  = 10     # 投递冷却（秒）
+SALVAGE_COOLDOWN_SECONDS = 2     # 打捞冷却（秒）
+WALL_MAX_ITEMS          = 9      # 安利墙最大收藏数
+MAX_CONTENT_LENGTH      = 20MB   # 上传图片上限
+TITLE_MIN_LENGTH        = 1      # 标题最短字数
+TITLE_MAX_LENGTH        = 30     # 标题最长字数
+FIELD_MIN_LENGTH        = 5      # 内容字段最短字数
+</pre>
+
+<!-- ==================== 九 ==================== -->
+<h2>九、页面访问权限</h2>
+<table>
+<tr><th width="200">页面</th><th>权限</th></tr>
+<tr><td>首页 <code>/</code></td><td>公开</td></tr>
+<tr><td>瓶子详情 <code>/bottle/&lt;id&gt;</code></td><td>公开</td></tr>
+<tr><td>分享瓶 <code>/s/bottle/&lt;id&gt;</code></td><td>公开（无需登录）</td></tr>
+<tr><td>公开安利墙 <code>/s/wall/&lt;id&gt;</code></td><td>公开（无需登录）</td></tr>
+<tr><td>投递 <code>/throw</code></td><td>需登录</td></tr>
+<tr><td>打捞 <code>/salvage</code></td><td>需登录</td></tr>
+<tr><td>我的安利墙 <code>/wall</code></td><td>需登录</td></tr>
+<tr><td>任务中心 <code>/tasks</code></td><td>需登录</td></tr>
+<tr><td>管理后台 <code>/admin/*</code></td><td>需管理员权限</td></tr>
+</table>
+
+<!-- ==================== 十 ==================== -->
+<h2>十、启动方式</h2>
+<pre>
+# 1. 安装依赖
+pip install flask flask-login flask-sqlalchemy pillow
+
+# 2. 进入项目目录
+cd guanghe-bottle-v5
+
+# 3. 启动
+python app.py
+
+# 4. 浏览器访问
+http://localhost:5000
+</pre>
+
+<div class="note">
+<b>默认账号：</b><br>
+管理员：admin1@guanghe.com / admin123<br>
+测试玩家：player@guanghe.com / player123
+</div>
+
+</body>
+</html>

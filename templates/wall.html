@@ -1,0 +1,116 @@
+{% extends "base.html" %}
+{% block title %}我的安利墙 · 光核安利漂流瓶{% endblock %}
+{% block body_class %}has-mobile-share{% endblock %}
+{% block content %}
+<div class="wall-header">
+    <h2>🖼️ 我的安利墙</h2>
+    <div class="wall-actions">
+        <button class="btn btn-secondary btn-sm" onclick="switchLayout('nine')">九宫格</button>
+        <button class="btn btn-secondary btn-sm" onclick="switchLayout('four')">四宫格</button>
+        <button class="btn btn-secondary btn-sm" onclick="copyShareLink('wall',{{ current_user.id }})">📤 分享</button>
+        {#══ 分享图生成 ══#}
+        {% if bottles %}
+        <button class="btn btn-primary btn-sm" onclick="openShareCard()">📸 生成分享图</button>
+        {% endif %}
+    </div>
+</div>
+
+{% if bottles %}
+<div class="wall-grid nine" id="wallGrid">
+    {% for b in bottles %}
+    <a href="/bottle/{{ b.id }}" class="wall-card">
+        <img src="/{{ b.image_path }}" alt="{{ b.title }}">
+        <div class="wc-label">{{ b.title[:12] }}</div>
+        <button class="wc-remove" onclick="event.preventDefault();event.stopPropagation();removeFromWall({{ b.id }})" title="移除">×</button>
+    </a>
+    {% endfor %}
+    {% for i in range(9 - bottles|length) %}
+    <div class="wall-empty">空位</div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center" style="padding:60px 0;color:var(--text-muted);">
+    <p style="font-size:18px;">🏜️ 还没有收藏</p>
+    <p class="mt-8">去打捞几个喜欢的瓶子吧～</p>
+</div>
+{% endif %}
+
+{#══ 全端分享条 ══#}
+{% if bottles %}
+<div class="share-bar" id="shareBar">
+    <span class="sb-text">👆 分享安利墙，拉新得奖励</span>
+    <button class="btn btn-amber" id="shareBarBtn" onclick="openShareCard()">📤 分享给好友</button>
+</div>
+{% endif %}
+
+{#══════════════════════════════════════════════════#}
+{#  分享图生成弹窗（可整体删除，不影响其他功能）  #}
+{#══════════════════════════════════════════════════#}
+{% if bottles %}
+<div class="sharecard-overlay" id="shareCardOverlay" onclick="event.target===this&&closeShareCard()">
+    <div class="sharecard-dialog">
+        <div class="sharecard-topbar">
+            <span>📸 分享图片预览</span>
+            <button class="sharecard-close-btn" onclick="closeShareCard()">×</button>
+        </div>
+
+        {# 背景选择 #}
+        <div class="sharecard-bg-switch">
+            <label class="sharecard-bg-opt">
+                <input type="radio" name="shareBg" value="theme" checked onchange="switchShareBg(this.value)"> 🌌 星空主题
+            </label>
+            <label class="sharecard-bg-opt">
+                <input type="radio" name="shareBg" value="image" onchange="switchShareBg(this.value)"> 🖼️ 背景图片
+            </label>
+        </div>
+
+        {# 预览区（html2canvas 截取此 div） #}
+        <div class="sharecard-preview" id="shareCardPreview">
+            <div class="sharecard-inner sgbg-theme" id="shareCardInner">
+                {# 标题区 #}
+                <div class="sc-title-area">
+                    <img class="sc-logo-img" src="{{ url_for('static', filename='images/logo-title.png') }}" alt="光核安利漂流瓶">
+                    <div class="sc-slogan">发现游戏玩家的宝藏安利</div>
+                    <div class="sc-divider"></div>
+                </div>
+
+                {# 安利墙缩略（JS 动态填充） #}
+                <div class="sc-wall" id="shareCardWall"></div>
+
+                {# 底部：二维码左 + 说明文字右 #}
+                <div class="sc-bottom-row">
+                    <div class="sc-qr-box" id="shareCardQR"></div>
+                    <div class="sc-bottom-text">
+                        <div class="sc-qr-label">长按识别二维码</div>
+                        <div class="sc-qr-sub">加入光核安利漂流瓶 🌊</div>
+                        <div class="sc-footer">
+                            来自 <strong>{{ current_user.display_name() }}</strong> 的安利墙
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# 操作按钮 #}
+        <div class="sharecard-actions">
+            <button class="sc-act-main" onclick="shareCardImage()">📲 分享给好友</button>
+            <div class="sc-act-row">
+                <button class="sc-act-sub" onclick="saveShareCard()">💾 保存到相册</button>
+                <button class="sc-act-sub" onclick="copyCardLink()">🔗 复制链接</button>
+            </div>
+        </div>
+        <p class="sharecard-close-txt" onclick="closeShareCard()">关闭</p>
+    </div>
+</div>
+{% endif %}
+{#══ 分享图生成 END ══#}
+
+{% endblock %}
+
+{% block extra_scripts %}
+{#══ 分享图生成依赖（可整体删除） ══#}
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js">
+</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js">
+</script>
+{% endblock %}

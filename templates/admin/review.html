@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}审核瓶子 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="admin-grid">
+    {% include "admin/_sidebar.html" %}
+    <div class="admin-main">
+        <h2>🔍 审核漂流瓶</h2>
+        <div class="filter-tabs mb-16">
+            <a href="?tab=risky" class="btn btn-sm {{ 'btn-amber' if tab=='risky' else 'btn-secondary' }}">
+                ⚠️ 有风险
+            </a>
+            <a href="?tab=pending" class="btn btn-sm {{ 'btn-primary' if tab=='pending' else 'btn-secondary' }}">
+                📋 未审核
+            </a>
+            <a href="?tab=reviewed" class="btn btn-sm {{ 'btn-primary' if tab=='reviewed' else 'btn-secondary' }}">
+                ✅ 已审核
+            </a>
+        </div>
+
+        {% if bottles.items %}
+        <div class="review-list">
+            {% for b in bottles.items %}
+            <div class="review-item" id="bottle-{{ b.id }}">
+                <img src="/{{ b.thumbnail_path or b.image_path }}" class="ri-thumb" alt="">
+                <div class="ri-info">
+                    <div class="ri-title">{{ b.title }}</div>
+                    <div class="ri-game">🎮 {{ b.game_name }}</div>
+                    <div class="ri-cat">
+                        {% set ci = get_category(b.category) %}
+                        {% if ci %}{{ ci.icon }} {{ ci.name }}{% endif %}
+                    </div>
+                    <div class="ri-text">{{ b.recommendation[:80] }}{% if b.recommendation|length > 80 %}...{% endif %}</div>
+                    {% if b.review_note %}<div class="ri-note">📝 {{ b.review_note }}</div>{% endif %}
+                    <div class="ri-meta">
+                        🧑 {{ b.author.display_name() if b.author else '匿名' }}
+                        · {{ b.created_at.strftime('%m-%d %H:%M') if b.created_at else '' }}
+                        · <a href="/bottle/{{ b.id }}">查看详情</a>
+                    </div>
+                </div>
+                <div class="ri-actions">
+                    {% if tab == 'risky' %}
+                    {# 有风险：通过 / 驳回 #}
+                    <button class="btn btn-primary btn-sm" onclick="reviewBottle({{ b.id }},'approve')">✅ 通过</button>
+                    <button class="btn btn-secondary btn-sm" onclick="reviewBottle({{ b.id }},'reject','打回理由')">❌ 驳回</button>
+
+                    {% elif tab == 'pending' %}
+                    {# 未审核：上架 / 打回 #}
+                    <button class="btn btn-primary btn-sm" onclick="reviewBottle({{ b.id }},'approve')">📤 上架</button>
+                    <button class="btn btn-secondary btn-sm" onclick="reviewBottle({{ b.id }},'reject','打回理由')">⚠ 打回</button>
+
+                    {% elif tab == 'reviewed' %}
+                    {# 已审核：撤销（回到未审核）/ 删除 #}
+                    {% if b.is_approved %}
+                    <span class="badge badge-ok">已上架</span>
+                    {% elif b.is_deleted %}
+                    <span class="badge badge-danger">已打回</span>
+                    <button class="btn btn-secondary btn-sm" onclick="reviewBottle({{ b.id }},'unreject')">↩ 撤销</button>
+                    {% else %}
+                    <span class="badge badge-warn">已驳回</span>
+                    {% endif %}
+                    <button class="btn btn-close btn-sm" onclick="reviewBottle({{ b.id }},'delete')">🗑 删除</button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="pager">
+            {% if bottles.has_prev %}<a href="?tab={{ tab }}&page={{ bottles.prev_num }}">←</a>{% endif %}
+            <span class="cur">{{ bottles.page }}/{{ bottles.pages }}</span>
+            {% if bottles.has_next %}<a href="?tab={{ tab }}&page={{ bottles.next_num }}">→</a>{% endif %}
+        </div>
+        {% else %}
+        <p class="text-center" style="color:var(--text-muted);padding:40px 0;">
+            {% if tab == 'risky' %}🎉 没有有风险的瓶子{% elif tab == 'pending' %}🎉 没有待审核的瓶子{% else %}还没有审核记录{% endif %}
+        </p>
+        {% endif %}
+    </div>
+</div>
+<script>
+function reviewBottle(id, action, defaultNote) {
+    if (action === 'delete' && !confirm('确认删除？不可恢复！')) return;
+    if (action === 'reject' && !confirm('打回将从所有安利墙中移除该瓶子，确认吗？')) return;
+
+    var note = '';
+    if (defaultNote && (action === 'reject')) {
+        note = prompt('驳回/打回理由（可选）：', defaultNote) || defaultNote;
+    }
+
+    fetch('/api/admin/review/' + id, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': getCSRFToken()},
+        body: JSON.stringify({action: action, note: note})
+    }).then(function(r){ return r.json() })
+    .then(function(d){
+        if (d.success) location.reload();
+        else showToast(d.error || '操作失败', 'error');
+    });
+}
+</script>
+{% endblock %}

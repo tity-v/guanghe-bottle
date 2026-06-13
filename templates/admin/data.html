@@ -1,0 +1,42 @@
+{% extends "base.html" %}
+{% block title %}详细数据 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="admin-grid">
+    {% include "admin/_sidebar.html" %}
+    <div class="admin-main">
+        <h2>📈 详细数据</h2>
+
+        <h3 style="margin-top:20px;">每日活跃用户（DAU）</h3>
+        <div class="data-table-wrap">
+            <table class="data-table">
+                <thead><tr><th>日期</th><th>活跃用户数</th></tr></thead>
+                <tbody>
+                    {% for d, c in dau %}
+                    <tr><td>{{ d }}</td><td>{{ c }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-center">暂无数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <h3 style="margin-top:24px;">每日投递量</h3>
+        <div class="data-table-wrap">
+            <table class="data-table">
+                <thead><tr><th>日期</th><th>投递数</th></tr></thead>
+                <tbody>
+                    {% for d, c in daily_throws %}
+                    <tr><td>{{ d }}</td><td>{{ c }}</td></tr>
+                    {% else %}
+                    <tr><td colspan="2" class="text-center">暂无数据</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <p class="text-center mt-16" style="color:var(--text-muted);font-size:12px;">
+            💡 更多数据可通过数据库直接导出 CSV
+        </p>
+    </div>
+</div>
+{% endblock %}

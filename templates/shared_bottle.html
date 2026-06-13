@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ bottle.title }}{% endblock %}
+{% block content %}
+<div class="detail-view">
+    <div class="reveal-card">
+        <img src="/{{ bottle.image_path }}" class="r-img" alt="{{ bottle.title }}">
+        <div class="r-body">
+            <span class="r-cat">
+                {% if cat_info %}{{ cat_info.icon }} {{ cat_info.name }}{% endif %}
+            </span>
+            <div class="r-title">{{ bottle.title }}</div>
+            <div class="r-game">🎮 {{ bottle.game_name }}</div>
+            {% if bottle.field_a %}
+            <div class="r-field">
+                <span class="r-fl">{% if cat_info %}{{ cat_info.field_a_label }}{% endif %}</span>
+                {{ bottle.field_a }}
+            </div>
+            {% endif %}
+            {% if bottle.field_b %}
+            <div class="r-field">
+                <span class="r-fl">{% if cat_info %}{{ cat_info.field_b_label }}{% endif %}</span>
+                {{ bottle.field_b }}
+            </div>
+            {% endif %}
+            {% if bottle.recommendation %}
+            <div class="r-rec">💬 {{ bottle.recommendation }}</div>
+            {% endif %}
+        </div>
+    </div>
+    <div class="r-actions">
+        <button class="btn-like" onclick="{% if current_user.is_authenticated %}toggleLike({{ bottle.id }}){% else %}location.href='{{ url_for('login') }}'{% endif %}">
+            <span class="heart">❤️</span> <span class="like-count">{{ bottle.like_count }}</span>
+        </button>
+        <button class="btn btn-secondary btn-sm" onclick="copyShareLink('bottle',{{ bottle.id }})">📤 分享</button>
+    </div>
+</div>
+<p class="text-center mt-16">
+    <span style="color:var(--text-dim);">一位用户收到的漂流瓶</span>
+</p>
+<p class="text-center mt-8">
+    <a href="/auth/register{% if bottle.author and bottle.author.referral_code %}?via={{ bottle.author.referral_code }}{% endif %}" class="btn btn-primary">🌊 一起来玩</a>
+</p>
+{% endblock %}

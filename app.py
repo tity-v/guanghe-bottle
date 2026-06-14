@@ -140,17 +140,38 @@ def load_sensitive_words():
 
 
 def check_sensitive(text):
-    """检测敏感内容：词库匹配 + 正则（手机号/链接/微信号/空格绕过）"""
+    """检测敏感内容：词库匹配 + 正则（手机号/链接/微信号/空格绕过）
+
+    策略：
+    - CJK/长词：不区分大小写子串匹配
+    - 短拉丁词（≤3字符）：单词边界匹配，避免 AV→have, IS→this 等误伤
+    - 去空格版同步检测，防止「加 微 信」类绕过
+    """
     words = load_sensitive_words()
 
     # 去空格文本（防 "加 微 信" 绕过）
     no_space = re.sub(r'\s+', '', text)
 
-    # 词库匹配（原文 + 去空格版，去重）
+    # 预编译小写的原文和去空格版
+    text_lower = text.lower()
+    no_space_lower = no_space.lower()
+
     matched = []
     for w in words:
-        if w in text or w in no_space:
-            matched.append(w)
+        w_lower = w.lower()
+
+        # 纯 ASCII 词 → 单词边界匹配，避免误伤（如 ISIS 匹配 thisis, AV 匹配 have）
+        if w.isascii():
+            pattern = re.compile(
+                r'(?<![a-zA-Z])' + re.escape(w) + r'(?![a-zA-Z])',
+                re.IGNORECASE
+            )
+            if pattern.search(text) or pattern.search(no_space):
+                matched.append(w)
+        else:
+            # CJK 词 → 不区分大小写子串匹配（CJK 字符极少意外组成其他词）
+            if w_lower in text_lower or w_lower in no_space_lower:
+                matched.append(w)
 
     # 正则检测
     regex_rules = [
@@ -158,6 +179,8 @@ def check_sensitive(text):
         ('URL链接', r'https?://|www\.|\.com|\.cn'),
         ('微信号', r'[vV]\s*[xX]\s*[:：]\s*\w'),
         ('QQ号', r'[qQ]{2}\s*[:：]\s*\d{5,}'),
+        # 短词兜底：空格绕过场景中 AV/IS 等可能已通过单词边界，此处补充独立出现
+        ('IS组织', r'(?<![a-zA-Z])IS(?![a-zA-Z])'),
     ]
     for label, pattern in regex_rules:
         if re.search(pattern, text) or re.search(pattern, no_space):
@@ -199,6 +222,20 @@ def remaining_salvage(uid):
     return max(0, limit - today_salvage_used(uid))
 
 
+def today_throw_count(uid):
+    """今日已投递瓶子次数"""
+    ts = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0, microsecond=0)
+    return DriftBottle.query.filter(
+        DriftBottle.user_id == uid,
+        DriftBottle.created_at >= ts
+    ).count()
+
+
+def remaining_throws(uid):
+    """计算剩余投递次数"""
+    return max(0, app.config['DAILY_THROW_LIMIT'] - today_throw_count(uid))
+
+
 # ══════════════════════════════════════════════════
 # 静态文件服务
 # ══════════════════════════════════════════════════
@@ -218,15 +255,18 @@ def index():
     ref = request.args.get('ref', type=int)
     has_task = False
     rem = 0
+    rem_throw = app.config['DAILY_THROW_LIMIT']
     if current_user.is_authenticated:
         t = get_or_create_task(current_user.id)
         has_task = not t.share_claimed
         rem = remaining_salvage(current_user.id)
+        rem_throw = remaining_throws(current_user.id)
     total = DriftBottle.query.filter_by(
         is_approved=True, is_deleted=False).count()
     return render_template('index.html',
                            has_new_task=has_task,
                            remaining_salvage=rem,
+                           remaining_throws=rem_throw,
                            ref_id=ref,
                            total_bottles=total)
 
@@ -354,6 +394,11 @@ def logout():
 @csrf_required
 def throw_bottle():
     if request.method == 'POST':
+        # 每日投递次数检查
+        if remaining_throws(current_user.id) <= 0:
+            flash(f'今日投递次数已用完（每日 {app.config["DAILY_THROW_LIMIT"]} 次），明天再来吧～', 'warning')
+            return redirect(url_for('throw_bottle'))
+
         # 冷却检查
         last = DriftBottle.query.filter_by(
             user_id=current_user.id
@@ -375,7 +420,8 @@ def throw_bottle():
         cat_info = Config.get_category(cat)
         if not cat_info:
             flash('请选择分类', 'error')
-            return render_template('throw.html', categories=Config.CATEGORIES)
+            return render_template('throw.html', categories=Config.CATEGORIES,
+                           remaining_throws=remaining_throws(current_user.id))
 
         # 校验
         errors = []
@@ -403,14 +449,16 @@ def throw_bottle():
         if errors:
             for e in errors:
                 flash(e, 'error')
-            return render_template('throw.html', categories=Config.CATEGORIES)
+            return render_template('throw.html', categories=Config.CATEGORIES,
+                           remaining_throws=remaining_throws(current_user.id))
 
         f = request.files['image']
         try:
             ip, tp = save_upload_image(f)
         except (ValueError, OSError) as e:
             flash(str(e), 'error')
-            return render_template('throw.html', categories=Config.CATEGORIES)
+            return render_template('throw.html', categories=Config.CATEGORIES,
+                           remaining_throws=remaining_throws(current_user.id))
 
         # 敏感词检查
         is_clean, matched = check_sensitive(title + game + fa + fb + rec)
@@ -444,7 +492,8 @@ def throw_bottle():
             flash('⚠️ 内容涉及敏感信息，已标记为有风险，等待管理员审核', 'warning')
         return redirect(url_for('index'))
 
-    return render_template('throw.html', categories=Config.CATEGORIES)
+    return render_template('throw.html', categories=Config.CATEGORIES,
+                           remaining_throws=remaining_throws(current_user.id))
 
 
 # ══════════════════════════════════════════════════

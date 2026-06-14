@@ -6,6 +6,14 @@
 <form method="POST" action="/throw" enctype="multipart/form-data" id="throwForm" class="throw-longform">
     <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
 
+    {# ── 每日次数提示 ── #}
+    <div class="throw-remaining">
+        🌊 今日剩余投递次数：<strong>{{ remaining_throws }}</strong> 次
+        {% if remaining_throws <= 0 %}
+        <p style="color:#f0a060;margin-top:8px;">今日次数已用完，明天再来吧～</p>
+        {% endif %}
+    </div>
+
     {# ── 1. 选分类 ── #}
     <section class="tf-section">
         <h2 class="tf-heading">🏷️ 选择安利分类</h2>
@@ -67,9 +75,15 @@
     {# ── 提交 ── #}
     <div class="tf-submit">
         <p class="tf-submit-hint">🌊 确认填写无误后，扔出你的漂流瓶</p>
+        {% if remaining_throws > 0 %}
         <button type="button" id="throwSubmitBtn" class="btn btn-amber btn-full" onclick="doThrow()" style="padding:16px;font-size:18px;">
             🌊 扔出漂流瓶
         </button>
+        {% else %}
+        <button type="button" class="btn btn-amber btn-full" disabled style="padding:16px;font-size:18px;opacity:0.5;">
+            🚫 今日次数已用完
+        </button>
+        {% endif %}
     </div>
 </form>
 

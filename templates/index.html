@@ -16,7 +16,7 @@
 
     {% if current_user.is_authenticated %}
     <div class="home-stats">
-        <p>今日剩余打捞：<strong>{{ remaining_salvage }}</strong> 次</p>
+        <p>今日剩余投递：<strong>{{ remaining_throws }}</strong> 次 &nbsp;|&nbsp; 今日剩余打捞：<strong>{{ remaining_salvage }}</strong> 次</p>
         <p class="home-links">
             <a href="/tasks" class="btn btn-secondary btn-sm">📋 做任务</a>
             <a href="/wall" class="btn btn-secondary btn-sm">🖼️ 安利墙</a>

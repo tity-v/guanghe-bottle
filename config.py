@@ -39,6 +39,9 @@ class Config:
     # 活动规则
     # ══════════════════════════════════════════════
 
+    # 每日投递次数上限
+    DAILY_THROW_LIMIT = 5
+
     # 每日基础打捞次数
     DAILY_SALVAGE_LIMIT = 1
 

@@ -560,6 +560,21 @@ function fallbackDownload(blob){
     trackShare('wall', window._currentUserId);
 }
 
+/* 分享图 → 链接回退（手机端）或下载（桌面端） */
+function shareLinkFallback(blob, link){
+    if (/Mobi|Android|iPhone/i.test(navigator.userAgent)){
+        // 手机端：复制链接
+        navigator.clipboard.writeText(link).then(function(){
+            showToast('📋 链接已复制！分享给好友吧～', 'success');
+            trackShare('wall', window._currentUserId);
+        }).catch(function(){
+            fallbackDownload(blob);
+        });
+    } else {
+        fallbackDownload(blob);
+    }
+}
+
 /* ── 分享图弹窗内：分享图片 + 复制链接 ── */
 function shareCardImage(){
     var inner = document.getElementById('shareCardInner');
@@ -568,33 +583,33 @@ function shareCardImage(){
     }
     if (typeof saveShareCard !== 'function'){ showToast('请稍后重试', 'warning'); return; }
 
-    // 生成 2x 图 → 优先原生分享链接（QQ/微信不支持文件分享，只分享链接）
-    var isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+    // 生成 2x 图 → 优先原生分享图片 → 不行则分享链接 → 都不行则下载
     var shareLink = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
     html2canvas(inner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
     .then(function(cvs){
         cvs.toBlob(function(blob){
-            if (navigator.share){
-                var sd = {title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'};
-                if (isMobile){
-                    // 手机端：只分享链接，QQ/微信能正确预览
-                    sd.url = shareLink;
-                } else {
-                    // 桌面端：尝试分享图片文件
-                    sd.files = [new File([blob], '光核安利墙.png', {type:'image/png'})];
-                }
-                navigator.share(sd).then(function(){
+            var file = new File([blob], '光核安利墙.png', {type:'image/png'});
+            if (navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+                // 原生分享图片（iOS Safari → 微信直接发图）
+                navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
+                .then(function(){
                     showToast('✅ 分享成功！', 'success');
                     trackShare('wall', window._currentUserId);
                 }).catch(function(err){
-                    if (err.name !== 'AbortError'){
-                        if (isMobile) fallbackCopyLink(shareLink, 'wall', window._currentUserId);
-                        else fallbackDownload(blob);
-                    }
+                    if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
+                });
+            } else if (navigator.share){
+                // 不支持文件分享（Android QQ/微信等）→ 分享链接
+                navigator.share({title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:shareLink})
+                .then(function(){
+                    showToast('✅ 分享成功！', 'success');
+                    trackShare('wall', window._currentUserId);
+                }).catch(function(err){
+                    if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
                 });
             } else {
-                if (isMobile) { fallbackCopyLink(shareLink, 'wall', window._currentUserId); }
-                else { fallbackDownload(blob); }
+                // 无原生分享 → 桌面下载 / 手机复制链接
+                shareLinkFallback(blob, shareLink);
             }
         }, 'image/png');
     })

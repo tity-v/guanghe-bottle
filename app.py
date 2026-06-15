@@ -962,15 +962,29 @@ def init_db():
             if 'is_deleted' not in bottle_cols:
                 cur.execute("ALTER TABLE drift_bottles ADD COLUMN is_deleted BOOLEAN DEFAULT 0")
                 print('[迁移] 已添加 drift_bottles.is_deleted 列')
+            # 补缺失的 promo_code_used 列
+            if 'promo_code_used' not in cols:
+                try:
+                    cur.execute("ALTER TABLE users ADD COLUMN promo_code_used VARCHAR(50) DEFAULT ''")
+                    print('[迁移] 已添加 users.promo_code_used 列')
+                except:
+                    pass
             # 迁移 email → qq（一次性）
             if 'email' in cols and 'qq' not in cols:
                 print('[迁移] 正在将 email 列改为 qq…')
                 conn.execute('PRAGMA foreign_keys = OFF')
-                # 删 promo_codes 表
                 conn.execute('DROP TABLE IF EXISTS promo_codes')
-                # 保存管理员
-                admins_old = list(conn.execute("SELECT id,email,password_hash,nickname,is_admin,referrer_id,referral_code,promo_code_used,created_at FROM users WHERE is_admin=1"))
-                # 重建 users 表
+                # 动态检测列名，兼容不同版本的旧库
+                cur.execute("PRAGMA table_info(users)")
+                all_cols = {row[1] for row in cur.fetchall()}
+                sel_cols = ['id','email','password_hash','nickname','is_admin','referrer_id']
+                if 'referral_code' in all_cols: sel_cols.append('referral_code')
+                else: sel_cols.append('NULL as referral_code')
+                if 'promo_code_used' in all_cols: sel_cols.append('promo_code_used')
+                else: sel_cols.append("'' as promo_code_used")
+                if 'created_at' in all_cols: sel_cols.append('created_at')
+                else: sel_cols.append('NULL as created_at')
+                admins_old = list(conn.execute(f"SELECT {','.join(sel_cols)} FROM users WHERE is_admin=1"))
                 conn.execute('''CREATE TABLE users_mig (
                     id INTEGER PRIMARY KEY AUTOINCREMENT,
                     qq VARCHAR(20) UNIQUE NOT NULL,

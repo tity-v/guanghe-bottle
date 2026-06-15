@@ -962,6 +962,37 @@ def init_db():
             if 'is_deleted' not in bottle_cols:
                 cur.execute("ALTER TABLE drift_bottles ADD COLUMN is_deleted BOOLEAN DEFAULT 0")
                 print('[迁移] 已添加 drift_bottles.is_deleted 列')
+            # 迁移 email → qq（一次性）
+            if 'email' in cols and 'qq' not in cols:
+                print('[迁移] 正在将 email 列改为 qq…')
+                conn.execute('PRAGMA foreign_keys = OFF')
+                # 删 promo_codes 表
+                conn.execute('DROP TABLE IF EXISTS promo_codes')
+                # 保存管理员
+                admins_old = list(conn.execute("SELECT id,email,password_hash,nickname,is_admin,referrer_id,referral_code,promo_code_used,created_at FROM users WHERE is_admin=1"))
+                # 重建 users 表
+                conn.execute('''CREATE TABLE users_mig (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    qq VARCHAR(20) UNIQUE NOT NULL,
+                    password_hash VARCHAR(256) NOT NULL,
+                    nickname VARCHAR(50) UNIQUE NOT NULL,
+                    is_admin BOOLEAN DEFAULT 0,
+                    referrer_id INTEGER,
+                    referral_code VARCHAR(60),
+                    promo_code_used VARCHAR(50) DEFAULT '',
+                    created_at DATETIME,
+                    FOREIGN KEY(referrer_id) REFERENCES users_mig(id)
+                )''')
+                conn.execute('CREATE INDEX ix_users_qq_mig ON users_mig(qq)')
+                qq_map = {1:'10001',2:'10002',3:'10003'}
+                for row in admins_old:
+                    uid = row[0]
+                    conn.execute('INSERT INTO users_mig (id,qq,password_hash,nickname,is_admin,referrer_id,referral_code,promo_code_used,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+                        (uid, qq_map.get(uid,'admin'+str(uid)), row[2], row[3], row[4], row[5], row[6] or '', row[7] or '', row[8]))
+                conn.execute('DROP TABLE users')
+                conn.execute('ALTER TABLE users_mig RENAME TO users')
+                conn.execute('PRAGMA foreign_keys = ON')
+                print('[迁移] email → qq 完成，已清除非管理员用户')
             conn.commit()
             conn.close()
 

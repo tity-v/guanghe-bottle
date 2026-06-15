@@ -328,7 +328,7 @@ function openShareCard(){
     if (qrBox){
         qrBox.innerHTML = '';
         var refCode = window._referralCode || window._currentUserId || '';
-        var qrUrl = location.origin + '/auth/register?via=' + refCode;
+        var qrUrl = location.origin + '/s/wall/' + (window._currentUserId || '') + '?via=' + refCode;
         try {
             _shareCardQR = new QRCode(qrBox, {
                 text: qrUrl,
@@ -590,7 +590,7 @@ function shareLinkFallback(blob, link){
 
 /* ── 分享图弹窗内：分享图片（预渲染，直接调用原生分享） ── */
 function shareCardImage(){
-    var shareLink = location.origin + '/auth/register?via=' + (window._referralCode || window._currentUserId || '');
+    var shareLink = location.origin + '/s/wall/' + (window._currentUserId || '') + '?via=' + (window._referralCode || window._currentUserId || '');
     var blob = _preRenderedBlob;
 
     if (!blob){
@@ -635,7 +635,7 @@ function shareCardImage(){
 }
 
 function copyCardLink(){
-    var link = location.origin + '/auth/register?via=' + (window._referralCode || window._currentUserId || '');
+    var link = location.origin + '/s/wall/' + (window._currentUserId || '') + '?via=' + (window._referralCode || window._currentUserId || '');
     navigator.clipboard.writeText(link).then(function(){
         showToast('✅ 链接已复制！好友注册后你能获得拉新奖励', 'success');
         trackShare('wall', window._currentUserId);

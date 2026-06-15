@@ -660,13 +660,15 @@ def my_wall():
 def shared_wall(uid):
     """分享的安利墙（无需登录可查看）"""
     u = User.query.get_or_404(uid)
+    via = request.args.get('via', '')
     items = SalvageRecord.query.filter_by(
         user_id=uid,
         is_saved_to_wall=True
     ).order_by(SalvageRecord.salvaged_at.desc()).all()
     return render_template('wall_public.html',
                            bottles=[r.bottle for r in items],
-                           wall_user=u)
+                           wall_user=u,
+                           via=via)
 
 
 @app.route('/api/bottle/<int:bid>/save-wall', methods=['POST'])

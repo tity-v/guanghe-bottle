@@ -48,11 +48,11 @@ class Config:
     # 任务奖励（次数）
     TASK_THROW_REWARD = 1       # 投递一个瓶子
     TASK_SHARE_REWARD = 1       # 分享活动/安利墙/瓶子
-    TASK_REFERRAL_REWARD = 2    # 拉新成功（每人）
+    TASK_REFERRAL_REWARD = 1    # 拉新成功（每人）
     TASK_REFERRAL_DAILY_MAX = 2  # 每日拉新上限（人）
 
     # 每日打捞总上限（999+ 给测试账号留空间）
-    DAILY_SALVAGE_MAX = 1000
+    DAILY_SALVAGE_MAX = 5
 
     # 字数限制
     TITLE_MIN_LENGTH = 1
@@ -69,9 +69,6 @@ class Config:
     # 安利墙
     WALL_MAX_ITEMS = 9
     WALL_LAYOUTS = ['nine', 'four']
-
-    # 推广码
-    PROMO_CODE_ENABLED = True
 
     # ── 动画时间（毫秒） ─────────────────────────
     TRANSITION_PAUSE_MS = 400     # 背景切换停留（缩短，减少等待）

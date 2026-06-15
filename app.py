@@ -18,7 +18,7 @@ from flask_login import (LoginManager, current_user, login_required,
 from PIL import Image
 
 from config import Config
-from models import (AdminLog, BottleLike, DailyTask, DriftBottle, PromoCode,
+from models import (AdminLog, BottleLike, DailyTask, DriftBottle,
                     SalvageRecord, ShareRecord, User, db)
 
 # ── 应用初始化 ──────────────────────────────────
@@ -281,15 +281,15 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('index'))
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        qq = request.form.get('qq', '').strip()
         pw = request.form.get('password', '')
-        u = User.query.filter_by(email=email).first()
+        u = User.query.filter_by(qq=qq).first()
         if u and u.check_password(pw):
             login_user(u, remember=True)
             nxt = request.args.get('next', url_for('index'))
             flash(f'🌊 欢迎回来，{u.display_name()}！', 'success')
             return redirect(nxt)
-        flash('邮箱或密码错误', 'error')
+        flash('QQ号或密码错误', 'error')
     return render_template('login.html')
 
 
@@ -302,21 +302,20 @@ def register():
     ref = request.args.get('ref', type=int)
     via = request.args.get('via', '').strip()
     if request.method == 'POST':
-        email = request.form.get('email', '').strip()
+        qq = request.form.get('qq', '').strip()
         pw = request.form.get('password', '')
         pw2 = request.form.get('password_confirm', '')
         nick = request.form.get('nickname', '').strip()
-        promo = request.form.get('promo_code', '').strip()
 
         errors = []
-        if User.query.filter_by(email=email).first():
-            errors.append('该邮箱已注册')
+        if User.query.filter_by(qq=qq).first():
+            errors.append('该QQ号已注册')
         if len(pw) < 6:
             errors.append('密码至少6位')
         if pw != pw2:
             errors.append('两次密码不一致')
         if not nick:
-            nick = email.split('@')[0]
+            nick = qq
         # 重名检测
         if User.query.filter_by(nickname=nick).first():
             errors.append('该用户名已被使用，请换一个')
@@ -334,26 +333,10 @@ def register():
             code = f"{base_code}{suffix}"
             suffix += 1
 
-        u = User(email=email, nickname=nick, referral_code=code)
+        u = User(qq=qq, nickname=nick, referral_code=code)
         u.set_password(pw)
         db.session.add(u)
         db.session.commit()
-
-        # 处理推广码
-        if promo and app.config['PROMO_CODE_ENABLED']:
-            pc = PromoCode.query.filter(
-                PromoCode.code == promo,
-                PromoCode.used_by.is_(None),
-                PromoCode.is_active == True
-            ).first()
-            if pc and pc.is_available:
-                pc.use(u.id)
-                u.promo_code_used = promo
-                db.session.commit()
-            elif pc:
-                flash(f'推广码 {promo} 已失效', 'warning')
-            else:
-                flash(f'推广码 {promo} 不存在', 'warning')
 
         # 拉新奖励：优先 via（referral_code），回退 ref（id）
         ref_user = None
@@ -503,8 +486,12 @@ def throw_bottle():
 @app.route('/salvage')
 @login_required
 def salvage_page():
+    collection_count = SalvageRecord.query.filter_by(
+        user_id=current_user.id
+    ).count()
     return render_template('salvage.html',
-                           remaining=remaining_salvage(current_user.id))
+                           remaining=remaining_salvage(current_user.id),
+                           collection_count=collection_count)
 
 
 @app.route('/api/salvage/remaining')
@@ -633,6 +620,22 @@ def shared_bottle(bid):
 # ══════════════════════════════════════════════════
 # 安利墙
 # ══════════════════════════════════════════════════
+
+@app.route('/collection')
+@login_required
+def my_collection():
+    """我捞到的瓶子 — 浏览所有打捞记录，与安利墙联动"""
+    records = SalvageRecord.query.filter_by(
+        user_id=current_user.id
+    ).order_by(SalvageRecord.salvaged_at.desc()).all()
+    wall_count = SalvageRecord.query.filter_by(
+        user_id=current_user.id, is_saved_to_wall=True
+    ).count()
+    return render_template('collection.html',
+                           records=records,
+                           wall_count=wall_count,
+                           wall_max=app.config['WALL_MAX_ITEMS'])
+
 
 @app.route('/wall')
 @login_required
@@ -777,53 +780,6 @@ def api_track():
 
 
 # ══════════════════════════════════════════════════
-# 推广码管理
-# ══════════════════════════════════════════════════
-
-@app.route('/admin/promo', methods=['GET', 'POST'])
-@login_required
-@admin_required
-@csrf_required
-def manage_promo():
-    if request.method == 'POST':
-        action = request.form.get('action', '')
-        if action == 'generate':
-            count = int(request.form.get('count', 5))
-            channel = request.form.get('channel_name', '').strip()
-            max_uses = int(request.form.get('max_uses', 1))
-            codes = []
-            for _ in range(count):
-                pc = PromoCode(
-                    code=f'GUANGHE{uuid.uuid4().hex[:8].upper()}',
-                    channel_name=channel,
-                    created_by=current_user.id,
-                    max_uses=max_uses
-                )
-                db.session.add(pc)
-                codes.append(pc.code)
-            db.session.commit()
-            admin_log = AdminLog(admin_id=current_user.id, action='generate_promo',
-                         note=f'生成 {count} 个推广码，渠道: {channel}', target_type='promo')
-            db.session.add(admin_log)
-            db.session.commit()
-            flash(f'已生成 {count} 个推广码：{", ".join(codes)}', 'success')
-
-        elif action == 'deactivate':
-            code_id = request.form.get('code_id', type=int)
-            pc = PromoCode.query.get(code_id)
-            if pc:
-                pc.is_active = False
-                AdminLog(admin_id=current_user.id, action='deactivate_promo',
-                         target_type='promo', target_id=code_id,
-                         note=f'停用推广码 {pc.code}')
-                db.session.commit()
-                flash(f'已停用推广码 {pc.code}', 'success')
-
-    codes = PromoCode.query.order_by(PromoCode.created_at.desc()).limit(50).all()
-    return render_template('admin/promo.html', codes=codes)
-
-
-# ══════════════════════════════════════════════════
 # 后台管理
 # ══════════════════════════════════════════════════
 
@@ -851,7 +807,6 @@ def admin_dashboard():
         'salvages': SalvageRecord.query.count(),
         'wall_saves': SalvageRecord.query.filter_by(is_saved_to_wall=True).count(),
         'shares': ShareRecord.query.count(),
-        'promo_used': PromoCode.query.filter(PromoCode.used_by.isnot(None)).count(),
     }
 
     # 各分类占比
@@ -1013,28 +968,22 @@ def init_db():
         # ── 补充旧用户的 referral_code ──
         users_no_code = User.query.filter(User.referral_code.is_(None)).all()
         for u in users_no_code:
-            u.referral_code = u.nickname or u.email.split('@')[0]
+            u.referral_code = u.nickname or u.qq
         if users_no_code:
             db.session.commit()
             print(f'[迁移] 已为 {len(users_no_code)} 个旧用户生成 referral_code')
 
         # ── 管理员账号 ──
         admins = [
-            ('admin1@guanghe.com', 'admin1'),
-            ('admin2@guanghe.com', 'admin2'),
-            ('admin3@guanghe.com', 'admin3'),
+            ('10001', 'admin1'),
+            ('10002', 'admin2'),
+            ('10003', 'admin3'),
         ]
-        for email, nick in admins:
-            if not User.query.filter_by(email=email).first():
-                a = User(email=email, nickname=nick, is_admin=True, referral_code=nick)
+        for qq, nick in admins:
+            if not User.query.filter_by(qq=qq).first():
+                a = User(qq=qq, nickname=nick, is_admin=True, referral_code=nick)
                 a.set_password('admin123')
                 db.session.add(a)
-
-        # ── 测试玩家 ──
-        if not User.query.filter_by(email='player@guanghe.com').first():
-            p = User(email='player@guanghe.com', nickname='player', referral_code='player')
-            p.set_password('player123')
-            db.session.add(p)
 
         db.session.commit()
 
@@ -1056,16 +1005,6 @@ def init_db():
                 ))
             db.session.commit()
 
-        # ── 初始推广码 ──
-        if PromoCode.query.count() == 0:
-            for _ in range(10):
-                db.session.add(PromoCode(
-                    code=f'GUANGHE{uuid.uuid4().hex[:8].upper()}',
-                    channel_name='初始渠道',
-                    created_by=1,
-                    max_uses=1
-                ))
-            db.session.commit()
 
 
 # ══════════════════════════════════════════════════

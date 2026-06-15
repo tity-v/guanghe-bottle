@@ -38,8 +38,8 @@ function showRules(){
     var modal = document.getElementById('rulesModal');
     if (modal){
         modal.style.display = 'flex';
-        // 记录已展示（跨标签页持久化）
-        try { localStorage.setItem('rules_shown', '1'); } catch(e) {}
+        // sessionStorage：标签页关闭即重置，下次登录再弹
+        try { sessionStorage.setItem('rules_shown', '1'); } catch(e) {}
     }
 }
 function closeRules(){
@@ -153,12 +153,20 @@ document.addEventListener('DOMContentLoaded', function(){
     var dot = document.getElementById('taskDot');
     if (dot && window._hasNewTask) dot.style.display = 'block';
 
-    // 规则弹窗（登录后首次访问，跨标签页共享状态）
+    // 规则弹窗（每次登录后显示一次）
     if (window._currentUserId && window._currentUserId !== null){
         try {
-            var shown = localStorage.getItem('rules_shown');
+            var shown = sessionStorage.getItem('rules_shown');
             if (!shown) setTimeout(showRules, 800);
         } catch(e) {}
+    }
+
+    // 退出时清除弹窗标记，确保下次登录再弹
+    var logoutLink = document.querySelector('.logout-link');
+    if (logoutLink) {
+        logoutLink.addEventListener('click', function(){
+            try { sessionStorage.removeItem('rules_shown'); } catch(e) {}
+        });
     }
 });
 

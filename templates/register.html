@@ -10,8 +10,8 @@
     <form method="POST" action="/auth/register{% if via %}?via={{ via }}{% elif ref_id %}?ref={{ ref_id }}{% endif %}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="form-g">
-            <label>📧 邮箱</label>
-            <input type="email" name="email" class="input" placeholder="请输入邮箱" required>
+            <label>🐧 QQ号</label>
+            <input type="text" name="qq" class="input" placeholder="请输入QQ号" inputmode="numeric" pattern="[0-9]{5,15}" required>
         </div>
         <div class="form-g">
             <label>😎 昵称</label>
@@ -24,10 +24,6 @@
         <div class="form-g">
             <label>🔒 确认密码</label>
             <input type="password" name="password_confirm" class="input" placeholder="再次输入" minlength="6" required>
-        </div>
-        <div class="form-g">
-            <label>🎫 推广码（加入光核社群获取）</label>
-            <input type="text" name="promo_code" class="input" placeholder="选填">
         </div>
         <button type="submit" class="btn btn-primary btn-full" style="padding:14px;font-size:16px;">🚀 注册</button>
     </form>

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}我捞到的瓶子 · 光核安利漂流瓶{% endblock %}
+{% block content %}
+<div class="collection-header">
+    <h2>📦 我捞到的瓶子</h2>
+    <p class="collection-sub">共 {{ records|length }} 个 · 已收藏到安利墙 {{ wall_count }}/{{ wall_max }}</p>
+</div>
+
+{% if records %}
+<div class="collection-grid" id="collectionGrid">
+    {% for r in records %}
+    {% set b = r.bottle %}
+    <div class="cl-card" id="clCard{{ b.id }}">
+        <a href="/bottle/{{ b.id }}" class="cl-thumb-wrap">
+            <img src="/{{ b.thumbnail_path or b.image_path }}" alt="{{ b.title }}" loading="lazy">
+        </a>
+        <div class="cl-info">
+            <a href="/bottle/{{ b.id }}" class="cl-title">{{ b.title[:18] }}{% if b.title|length > 18 %}…{% endif %}</a>
+            <div class="cl-game">🎮 {{ b.game_name[:14] }}</div>
+            <div class="cl-meta">
+                <span class="cl-cat">
+                    {% set ci = config.get_category_info(b.category) %}
+                    {{ ci.icon if ci else '📦' }} {{ ci.name if ci else b.category }}
+                </span>
+                <span class="cl-date">{{ r.salvaged_at.strftime('%m-%d %H:%M') if r.salvaged_at else '' }}</span>
+            </div>
+        </div>
+        <div class="cl-action">
+            {% if r.is_saved_to_wall %}
+            <button class="cl-wall-btn on" onclick="toggleWall({{ b.id }}, this)" data-action="remove">
+                ✅ 已收藏
+            </button>
+            {% else %}
+            <button class="cl-wall-btn" onclick="toggleWall({{ b.id }}, this)" data-action="add"
+                {% if wall_count >= wall_max %}disabled{% endif %}>
+                ⭐ 收藏到墙
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="text-center" style="padding:80px 0;color:var(--text-dim);text-shadow:0 1px 2px rgba(0,0,0,0.4);">
+    <p style="font-size:48px;">📭</p>
+    <p style="font-size:16px;margin-top:8px;">还没有捞到任何瓶子</p>
+    <a href="/salvage" class="btn btn-primary" style="margin-top:20px;">🎣 去打捞</a>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+window._currentUserId = {{ current_user.id }};
+window._wallCount = {{ wall_count }};
+window._wallMax = {{ wall_max }};
+
+function toggleWall(bottleId, btn) {
+    var action = btn.getAttribute('data-action');
+    var isAdd = action === 'add';
+
+    if (isAdd && window._wallCount >= window._wallMax) {
+        alert('安利墙已满（最多 ' + window._wallMax + ' 个）');
+        return;
+    }
+
+    var url = isAdd ? '/api/bottle/' + bottleId + '/save-wall' : '/api/bottle/' + bottleId + '/remove-wall';
+    var csrf = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+
+    btn.disabled = true;
+    btn.textContent = isAdd ? '⏳ 收藏中…' : '⏳ 移除中…';
+
+    fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': csrf },
+        body: JSON.stringify({})
+    })
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+        if (data.success) {
+            if (isAdd) {
+                btn.textContent = '✅ 已收藏';
+                btn.classList.add('on');
+                btn.setAttribute('data-action', 'remove');
+                window._wallCount++;
+            } else {
+                btn.textContent = '⭐ 收藏到墙';
+                btn.classList.remove('on');
+                btn.setAttribute('data-action', 'add');
+                window._wallCount--;
+            }
+            // 更新 header 计数
+            var sub = document.querySelector('.collection-sub');
+            if (sub) {
+                sub.textContent = '共 ' + document.querySelectorAll('.cl-card').length + ' 个 · 已收藏到安利墙 ' + window._wallCount + '/' + window._wallMax;
+            }
+            // 如果墙满了，禁用所有 add 按钮
+            if (window._wallCount >= window._wallMax) {
+                document.querySelectorAll('.cl-wall-btn[data-action="add"]').forEach(function(b) {
+                    b.disabled = true;
+                });
+            } else {
+                document.querySelectorAll('.cl-wall-btn[data-action="add"]').forEach(function(b) {
+                    b.disabled = false;
+                });
+            }
+        } else {
+            alert(data.error || '操作失败');
+            btn.textContent = isAdd ? '⭐ 收藏到墙' : '✅ 已收藏';
+        }
+        btn.disabled = false;
+    })
+    .catch(function() {
+        btn.textContent = isAdd ? '⭐ 收藏到墙' : '✅ 已收藏';
+        btn.disabled = false;
+    });
+}
+</script>
+{% endblock %}

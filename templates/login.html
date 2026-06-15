@@ -7,8 +7,8 @@
     <form method="POST" action="{{ url_for('login') }}">
         <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
         <div class="form-g">
-            <label>📧 邮箱</label>
-            <input type="email" name="email" class="input" placeholder="请输入邮箱" required>
+            <label>🐧 QQ号</label>
+            <input type="text" name="qq" class="input" placeholder="请输入QQ号" inputmode="numeric" pattern="[0-9]{5,15}" required>
         </div>
         <div class="form-g">
             <label>🔒 密码</label>

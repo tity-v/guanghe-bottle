@@ -4,7 +4,7 @@
 <div class="task-header">
     <div class="big-num">{{ remaining }}</div>
     <div class="big-label">今日剩余打捞次数</div>
-    <p style="font-size:12px;color:var(--text-dim);margin-top:4px;">
+    <p style="font-size:13px;color:var(--text-dim);margin-top:4px;text-shadow:0 1px 2px rgba(0,0,0,0.4);">
         基础 {{ daily_limit }} 次 + 任务奖励 · 每日总上限 {{ daily_max }} 次 · 已用 {{ today_used }} 次
     </p>
 </div>
@@ -51,11 +51,11 @@
         </div>
         <div>
             <span class="t-reward">+{{ referral_reward }}次/人</span>
-            <span style="margin-left:8px;font-size:12px;color:var(--text-dim);">{{ task.referral_count }}/{{ referral_max }}</span>
+            <span style="margin-left:8px;font-size:13px;color:var(--text-dim);">{{ task.referral_count }}/{{ referral_max }}</span>
         </div>
     </div>
 </div>
-<p class="text-center mt-16" style="font-size:12px;color:var(--text-muted);">
+<p class="text-center mt-16" style="font-size:13px;color:var(--text-dim);text-shadow:0 1px 2px rgba(0,0,0,0.4);">
     💡 分享链接 → 好友注册 → 回此页领奖励
 </p>
 {% endblock %}

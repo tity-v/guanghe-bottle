@@ -12,7 +12,18 @@ class Config:
     """全局配置"""
 
     # ── Flask 核心 ──────────────────────────────
-    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(32).hex()
+    _key_file = os.path.join(os.path.dirname(__file__), 'instance', '.secret_key')
+    _env_key = os.environ.get('SECRET_KEY')
+    if _env_key:
+        SECRET_KEY = _env_key
+    elif os.path.exists(_key_file):
+        with open(_key_file, 'r') as f:
+            SECRET_KEY = f.read().strip()
+    else:
+        SECRET_KEY = os.urandom(32).hex()
+        os.makedirs(os.path.dirname(_key_file), exist_ok=True)
+        with open(_key_file, 'w') as f:
+            f.write(SECRET_KEY)
     DEBUG = os.environ.get('FLASK_DEBUG', '0') == '1'
     TEMPLATES_AUTO_RELOAD = True
 

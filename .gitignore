@@ -33,3 +33,5 @@ Thumbs.db
 # Secrets
 .env
 .env.production
+static/images/_originals/
+static/css/*.bak

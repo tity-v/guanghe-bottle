@@ -26,6 +26,7 @@ class Config:
             f.write(SECRET_KEY)
     DEBUG = os.environ.get('FLASK_DEBUG', '0') == '1'
     TEMPLATES_AUTO_RELOAD = True
+    SEND_FILE_MAX_AGE_DEFAULT = 3600  # 静态文件缓存 1 小时
 
     # ── 数据库 ──────────────────────────────────
     SQLALCHEMY_DATABASE_URI = os.environ.get(

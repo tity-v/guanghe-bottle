@@ -12,7 +12,7 @@ class Config:
     """全局配置"""
 
     # ── Flask 核心 ──────────────────────────────
-    SECRET_KEY = os.environ.get('SECRET_KEY', 'guanghe-bottle-2026-seaside-v5')
+    SECRET_KEY = os.environ.get('SECRET_KEY') or os.urandom(32).hex()
     DEBUG = os.environ.get('FLASK_DEBUG', '0') == '1'
     TEMPLATES_AUTO_RELOAD = True
 

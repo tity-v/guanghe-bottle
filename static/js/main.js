@@ -593,7 +593,6 @@ function shareCardImage(){
     var shareLink = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
     var blob = _preRenderedBlob;
 
-    // 还没渲染完 → 等待
     if (!blob){
         showToast('⏳ 图片生成中，请稍后再点～', 'warning');
         var scInner = document.getElementById('shareCardInner');
@@ -606,28 +605,29 @@ function shareCardImage(){
         return;
     }
 
+    if (!navigator.share){
+        // 无原生分享 → 下载
+        fallbackDownload(blob);
+        return;
+    }
+
+    // 直接分享图片文件，不依赖 canShare（Android canShare 可能误判）
     var file = new File([blob], '光核安利墙.png', {type:'image/png'});
-    if (navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-        // 支持分享图片文件（iOS Safari 等）
-        navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
-        .then(function(){
-            showToast('✅ 分享成功！', 'success');
-            trackShare('wall', window._currentUserId);
-        }).catch(function(err){
-            if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
-        });
-    } else if (navigator.share){
-        // 不支持文件 → 分享链接，仍拉起原生弹窗
+    navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
+    .then(function(){
+        showToast('✅ 分享成功！', 'success');
+        trackShare('wall', window._currentUserId);
+    }).catch(function(err){
+        if (err.name === 'AbortError') return; // 用户取消
+        // 文件分享失败 → 尝试链接
         navigator.share({title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:shareLink})
         .then(function(){
             showToast('✅ 分享成功！', 'success');
             trackShare('wall', window._currentUserId);
-        }).catch(function(err){
-            if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
+        }).catch(function(err2){
+            if (err2.name !== 'AbortError') shareLinkFallback(blob, shareLink);
         });
-    } else {
-        shareLinkFallback(blob, shareLink);
-    }
+    });
 }
 
 function copyCardLink(){

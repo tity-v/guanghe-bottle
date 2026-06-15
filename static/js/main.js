@@ -568,26 +568,33 @@ function shareCardImage(){
     }
     if (typeof saveShareCard !== 'function'){ showToast('请稍后重试', 'warning'); return; }
 
-    // 生成 2x 图 → 优先原生分享
+    // 生成 2x 图 → 优先原生分享链接（QQ/微信不支持文件分享，只分享链接）
+    var isMobile = /Mobi|Android|iPhone/i.test(navigator.userAgent);
+    var shareLink = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
     html2canvas(inner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
     .then(function(cvs){
         cvs.toBlob(function(blob){
             if (navigator.share){
-                // 尝试分享图片文件（手机端 QQ/微信等），不支持则分享链接
-                var file = new File([blob], '光核安利墙.png', {type:'image/png'});
-                var sd = {title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', files:[file]};
-                if (navigator.canShare && !navigator.canShare(sd)){
-                    var link = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
-                    sd = {title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:link};
+                var sd = {title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'};
+                if (isMobile){
+                    // 手机端：只分享链接，QQ/微信能正确预览
+                    sd.url = shareLink;
+                } else {
+                    // 桌面端：尝试分享图片文件
+                    sd.files = [new File([blob], '光核安利墙.png', {type:'image/png'})];
                 }
                 navigator.share(sd).then(function(){
                     showToast('✅ 分享成功！', 'success');
                     trackShare('wall', window._currentUserId);
                 }).catch(function(err){
-                    if (err.name !== 'AbortError') fallbackDownload(blob);
+                    if (err.name !== 'AbortError'){
+                        if (isMobile) fallbackCopyLink(shareLink, 'wall', window._currentUserId);
+                        else fallbackDownload(blob);
+                    }
                 });
             } else {
-                fallbackDownload(blob);
+                if (isMobile) { fallbackCopyLink(shareLink, 'wall', window._currentUserId); }
+                else { fallbackDownload(blob); }
             }
         }, 'image/png');
     })

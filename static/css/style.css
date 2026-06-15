@@ -618,15 +618,15 @@ textarea.input{min-height:90px;resize:vertical}
     transition:all .25s;
 }
 .sc-act-main:hover{box-shadow:0 4px 24px rgba(77,201,246,.4);transform:translateY(-1px)}
-.sc-act-row{display:flex;gap:8px}
+.sc-act-row{display:flex;gap:10px}
 .sc-act-sub{
-    flex:1;min-width:0;padding:9px 12px;
-    border-radius:var(--radius-full);font-size:12px;font-weight:600;
+    flex:1;min-width:0;padding:14px 20px;
+    border-radius:var(--radius-full);font-size:15px;font-weight:700;
     cursor:pointer;transition:all .25s;font-family:inherit;
-    white-space:nowrap;border:1px solid var(--glass-border);
-    background:var(--glass);color:var(--text-dim);
+    white-space:nowrap;border:2px solid var(--glass-border);
+    background:var(--glass);color:var(--text);
 }
-.sc-act-sub:hover{border-color:var(--glow-cyan);color:var(--text)}
+.sc-act-sub:hover{border-color:var(--glow-cyan);background:rgba(77,201,246,.08);box-shadow:0 0 16px rgba(77,201,246,.15)}
 .sharecard-close-txt{
     text-align:center;font-size:12px;color:var(--text-muted);
     padding:10px 0 14px;cursor:pointer;margin:0;
@@ -647,7 +647,7 @@ textarea.input{min-height:90px;resize:vertical}
     .sc-qr-box img{width:68px;height:68px}
     .sc-qr-label{font-size:11px}
     .sc-act-main{font-size:14px;padding:10px 16px}
-    .sc-act-sub{font-size:11px;padding:7px 10px}
+    .sc-act-sub{font-size:14px;padding:12px 16px}
 }
 /* ══ 分享图生成 END ══ */
 

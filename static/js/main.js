@@ -328,7 +328,7 @@ function openShareCard(){
     if (qrBox){
         qrBox.innerHTML = '';
         var refCode = window._referralCode || window._currentUserId || '';
-        var qrUrl = location.origin + '/register?via=' + refCode;
+        var qrUrl = location.origin + '/auth/register?via=' + refCode;
         try {
             _shareCardQR = new QRCode(qrBox, {
                 text: qrUrl,
@@ -590,7 +590,7 @@ function shareLinkFallback(blob, link){
 
 /* ── 分享图弹窗内：分享图片（预渲染，直接调用原生分享） ── */
 function shareCardImage(){
-    var shareLink = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
+    var shareLink = location.origin + '/auth/register?via=' + (window._referralCode || window._currentUserId || '');
     var blob = _preRenderedBlob;
 
     if (!blob){
@@ -606,32 +606,36 @@ function shareCardImage(){
     }
 
     if (!navigator.share){
-        // 无原生分享 → 下载
         fallbackDownload(blob);
         return;
     }
 
-    // 直接分享图片文件，不依赖 canShare（Android canShare 可能误判）
-    var file = new File([blob], '光核安利墙.png', {type:'image/png'});
-    navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
-    .then(function(){
-        showToast('✅ 分享成功！', 'success');
-        trackShare('wall', window._currentUserId);
-    }).catch(function(err){
-        if (err.name === 'AbortError') return; // 用户取消
-        // 文件分享失败 → 尝试链接
+    var isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    if (isIOS){
+        // iOS Safari → 直接分享图片文件（微信能收图片）
+        var file = new File([blob], '光核安利墙.png', {type:'image/png'});
+        navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
+        .then(function(){
+            showToast('✅ 分享成功！', 'success');
+            trackShare('wall', window._currentUserId);
+        }).catch(function(err){
+            if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
+        });
+    } else {
+        // Android → 分享链接（QQ/微信不支持文件，但链接会展示预览卡片）
         navigator.share({title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:shareLink})
         .then(function(){
             showToast('✅ 分享成功！', 'success');
             trackShare('wall', window._currentUserId);
-        }).catch(function(err2){
-            if (err2.name !== 'AbortError') shareLinkFallback(blob, shareLink);
+        }).catch(function(err){
+            if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
         });
-    });
+    }
 }
 
 function copyCardLink(){
-    var link = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
+    var link = location.origin + '/auth/register?via=' + (window._referralCode || window._currentUserId || '');
     navigator.clipboard.writeText(link).then(function(){
         showToast('✅ 链接已复制！好友注册后你能获得拉新奖励', 'success');
         trackShare('wall', window._currentUserId);

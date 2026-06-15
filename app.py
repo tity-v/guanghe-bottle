@@ -293,6 +293,13 @@ def login():
     return render_template('login.html')
 
 
+@app.route('/register')
+def register_redirect():
+    """兼容旧链接 /register?via=xxx → /auth/register"""
+    qs = request.query_string.decode('utf-8')
+    return redirect(f'/auth/register?{qs}' if qs else '/auth/register')
+
+
 @app.route('/auth/register', methods=['GET', 'POST'])
 @csrf_required
 def register():

@@ -286,8 +286,9 @@ function switchLayout(layout){
    ══════════════════════════════════════════════ */
 
 var _shareCardQR = null; // QR 实例
+var _preRenderedBlob = null; // 预生成的分享图 blob
 
-/* 打开分享图弹窗 */
+/* 打开分享图弹窗 → 立即预渲染图片 */
 function openShareCard(){
     var overlay = document.getElementById('shareCardOverlay');
     if (!overlay) return;
@@ -357,10 +358,22 @@ function openShareCard(){
 
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
+
+    // 预渲染分享图，确保点击分享时在用户手势上下文中
+    _preRenderedBlob = null;
+    setTimeout(function(){
+        var scInner = document.getElementById('shareCardInner');
+        if (!scInner || typeof html2canvas === 'undefined') return;
+        html2canvas(scInner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
+        .then(function(cvs){
+            cvs.toBlob(function(blob){ _preRenderedBlob = blob; }, 'image/png');
+        }).catch(function(){});
+    }, 400);
 }
 
 /* 关闭分享图弹窗 */
 function closeShareCard(){
+    _preRenderedBlob = null;
     var overlay = document.getElementById('shareCardOverlay');
     if (overlay){
         overlay.style.display = 'none';
@@ -575,48 +588,46 @@ function shareLinkFallback(blob, link){
     }
 }
 
-/* ── 分享图弹窗内：分享图片 + 复制链接 ── */
+/* ── 分享图弹窗内：分享图片（预渲染，直接调用原生分享） ── */
 function shareCardImage(){
-    var inner = document.getElementById('shareCardInner');
-    if (!inner || typeof html2canvas === 'undefined'){
-        showToast('请稍后重试', 'warning'); return;
-    }
-    if (typeof saveShareCard !== 'function'){ showToast('请稍后重试', 'warning'); return; }
-
-    // 生成 2x 图 → 优先原生分享图片 → 不行则分享链接 → 都不行则下载
     var shareLink = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
-    html2canvas(inner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
-    .then(function(cvs){
-        cvs.toBlob(function(blob){
-            var file = new File([blob], '光核安利墙.png', {type:'image/png'});
-            if (navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
-                // 原生分享图片（iOS Safari → 微信直接发图）
-                navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
-                .then(function(){
-                    showToast('✅ 分享成功！', 'success');
-                    trackShare('wall', window._currentUserId);
-                }).catch(function(err){
-                    if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
-                });
-            } else if (navigator.share){
-                // 不支持文件分享（Android QQ/微信等）→ 分享链接
-                navigator.share({title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:shareLink})
-                .then(function(){
-                    showToast('✅ 分享成功！', 'success');
-                    trackShare('wall', window._currentUserId);
-                }).catch(function(err){
-                    if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
-                });
-            } else {
-                // 无原生分享 → 桌面下载 / 手机复制链接
-                shareLinkFallback(blob, shareLink);
-            }
-        }, 'image/png');
-    })
-    .catch(function(){
-        // 兜底：分享链接
-        smartShare('wall', window._currentUserId);
-    });
+    var blob = _preRenderedBlob;
+
+    // 还没渲染完 → 等待
+    if (!blob){
+        showToast('⏳ 图片生成中，请稍后再点～', 'warning');
+        var scInner = document.getElementById('shareCardInner');
+        if (scInner && typeof html2canvas !== 'undefined'){
+            html2canvas(scInner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
+            .then(function(cvs){
+                cvs.toBlob(function(b){ _preRenderedBlob = b; }, 'image/png');
+            }).catch(function(){});
+        }
+        return;
+    }
+
+    var file = new File([blob], '光核安利墙.png', {type:'image/png'});
+    if (navigator.share && navigator.canShare && navigator.canShare({files:[file]})){
+        // 支持分享图片文件（iOS Safari 等）
+        navigator.share({files:[file], title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！'})
+        .then(function(){
+            showToast('✅ 分享成功！', 'success');
+            trackShare('wall', window._currentUserId);
+        }).catch(function(err){
+            if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
+        });
+    } else if (navigator.share){
+        // 不支持文件 → 分享链接，仍拉起原生弹窗
+        navigator.share({title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:shareLink})
+        .then(function(){
+            showToast('✅ 分享成功！', 'success');
+            trackShare('wall', window._currentUserId);
+        }).catch(function(err){
+            if (err.name !== 'AbortError') shareLinkFallback(blob, shareLink);
+        });
+    } else {
+        shareLinkFallback(blob, shareLink);
+    }
 }
 
 function copyCardLink(){

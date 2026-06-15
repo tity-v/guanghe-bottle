@@ -500,7 +500,7 @@ function trackShare(type, targetId){
     });
 }
 
-/* ── 智能分享（Web Share API + 剪贴板回退） ── */
+/* ── 智能分享（Web Share API 原生分享 + 剪贴板回退） ── */
 function smartShare(type, targetId, title, text){
     var via = window._referralCode || window._currentUserId || '';
     var link = location.origin;
@@ -511,37 +511,53 @@ function smartShare(type, targetId, title, text){
     var shareTitle = title || '光核安利漂流瓶 🌊';
     var shareText = text || '来光核安利漂流瓶，发现游戏玩家们的宝藏安利！🎮';
 
-    // 优先 Web Share API（移动端原生分享面板）
+    // 优先 Web Share API（手机端拉起 QQ/微信等原生分享面板，桌面端系统分享）
     if (navigator.share) {
         navigator.share({
             title: shareTitle,
             text: shareText,
             url: link
         }).then(function(){
+            showToast('✅ 分享成功！好友注册后你能获得拉新奖励～', 'success');
             trackShare(type, targetId);
         }).catch(function(err){
             if (err.name !== 'AbortError'){
-                fallbackCopyLink(link, type, targetId);
+                // 分享失败，回退到剪贴板
+                fallbackCopyLink(link, type, targetId, '原生分享不可用，已改为复制链接');
             }
         });
     } else {
+        // 不支持原生分享（如桌面端 Firefox、HTTP 环境）
         fallbackCopyLink(link, type, targetId);
     }
 }
 
-function fallbackCopyLink(link, type, targetId){
+function fallbackCopyLink(link, type, targetId, hint){
+    var msg = hint || '📋 链接已复制！好友注册后你能获得拉新奖励～';
     navigator.clipboard.writeText(link).then(function(){
-        showToast('📋 链接已复制！好友注册后你能获得拉新奖励～', 'success');
+        showToast(msg, 'success');
         trackShare(type, targetId);
     }).catch(function(){
-        prompt('复制以下链接分享给好友：', link);
-        trackShare(type, targetId);
+        // 剪贴板也不可用（极少见），弹窗让用户手动复制
+        var p = prompt('请手动复制以下链接分享给好友：', link);
+        if (p || p === link) trackShare(type, targetId);
     });
 }
 
 /* ── 分享链接（兼容旧版调用） ─────────── */
 function copyShareLink(type, targetId){
     smartShare(type, targetId);
+}
+
+/* 分享图 → 下载回退 */
+function fallbackDownload(blob){
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url; a.download = '光核安利墙.png';
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+    showToast('💾 图片已保存到本地！', 'success');
+    trackShare('wall', window._currentUserId);
 }
 
 /* ── 分享图弹窗内：分享图片 + 复制链接 ── */
@@ -552,29 +568,26 @@ function shareCardImage(){
     }
     if (typeof saveShareCard !== 'function'){ showToast('请稍后重试', 'warning'); return; }
 
-    // 生成 2x 图 → 系统分享
+    // 生成 2x 图 → 优先原生分享
     html2canvas(inner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
     .then(function(cvs){
         cvs.toBlob(function(blob){
-            if (/Mobi|Android|iPhone/i.test(navigator.userAgent) && navigator.share){
+            if (navigator.share){
+                // 尝试分享图片文件（手机端 QQ/微信等），不支持则分享链接
                 var file = new File([blob], '光核安利墙.png', {type:'image/png'});
                 var sd = {title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', files:[file]};
-                if (!navigator.canShare || !navigator.canShare(sd)){
+                if (navigator.canShare && !navigator.canShare(sd)){
                     var link = location.origin + '/register?via=' + (window._referralCode || window._currentUserId || '');
                     sd = {title:'光核安利漂流瓶 🌊', text:'来看看我的游戏安利墙！', url:link};
                 }
                 navigator.share(sd).then(function(){
+                    showToast('✅ 分享成功！', 'success');
                     trackShare('wall', window._currentUserId);
-                }).catch(function(){});
+                }).catch(function(err){
+                    if (err.name !== 'AbortError') fallbackDownload(blob);
+                });
             } else {
-                // 桌面端：下载
-                var url = URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.href = url; a.download = '光核安利墙.png';
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-                showToast('✅ 图片已保存！', 'success');
-                trackShare('wall', window._currentUserId);
+                fallbackDownload(blob);
             }
         }, 'image/png');
     })

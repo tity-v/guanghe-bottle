@@ -26,10 +26,7 @@
     <div class="home-stats">
         <p>已有 <strong>{{ total_bottles }}</strong> 个漂流瓶在星海中漂流</p>
         <p class="home-links">
-            <a href="/auth/register{% if ref_id %}?ref={{ ref_id }}{% endif %}">注册</a>
-            或
-            <a href="/auth/login">登录</a>
-            开始漂流
+            <a href="/auth/login{% if ref_id %}?ref={{ ref_id }}{% endif %}" class="btn btn-primary">🐧 QQ号登录 / 自动注册</a>
         </p>
     </div>
     {% endif %}

@@ -83,8 +83,8 @@ class Config:
     WALL_LAYOUTS = ['nine', 'four']
 
     # ── 动画时间（毫秒） ─────────────────────────
-    TRANSITION_PAUSE_MS = 400     # 背景切换停留（缩短，减少等待）
-    WHITE_SCREEN_MS = 350         # 过渡遮罩（缩短，柔化体验）
+    TRANSITION_PAUSE_MS = 250     # 背景切换停留
+    WHITE_SCREEN_MS = 200         # 过渡遮罩
 
     # ══════════════════════════════════════════════
     # 7 大内容分类

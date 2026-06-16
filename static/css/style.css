@@ -438,24 +438,6 @@ textarea.input{min-height:90px;resize:vertical}
 }
 .sharecard-close-btn:hover{color:var(--text)}
 
-/* 背景切换 */
-.sharecard-bg-switch{
-    display:flex;gap:8px;padding:12px 20px;
-    border-bottom:1px solid var(--glass-border);
-}
-.sharecard-bg-opt{
-    display:flex;align-items:center;gap:6px;
-    font-size:13px;color:var(--text-dim);cursor:pointer;
-    padding:6px 14px;border-radius:var(--radius-full);
-    border:1px solid var(--glass-border);
-    transition:all .2s;
-}
-.sharecard-bg-opt:has(input:checked){
-    color:var(--amber);border-color:var(--amber);
-    background:rgba(247,128,0,.08);
-}
-.sharecard-bg-opt input{display:none}
-
 /* 预览区 */
 .sharecard-preview{
     padding:16px 20px;display:flex;justify-content:center;
@@ -538,18 +520,6 @@ textarea.input{min-height:90px;resize:vertical}
         /* ── 底色 ── */
         linear-gradient(178deg, #030b1a 0%, #07162e 35%, #0a1c38 70%, #0c1f40 100%);
 }
-/* 背景图片主题 */
-.sgbg-image{
-    background: #050d1a url('../images/bg-default.jpg') center/cover no-repeat;
-    position:relative;
-}
-.sgbg-image::after{
-    content:'';position:absolute;inset:0;
-    background:rgba(5,13,26,.55);
-    pointer-events:none;
-}
-/* 让内容在遮罩之上 */
-.sgbg-image > *{position:relative;z-index:1}
 
 /* 标题区 */
 .sc-title-area{text-align:center;margin-bottom:14px}

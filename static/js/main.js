@@ -230,8 +230,7 @@ function doSalvage(){
     })
     .catch(function(){ showToast('网络错误', 'error'); })
     .finally(function(){
-        if (salvageSuccess){ btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
-        else if (!salvageSuccess){ btn.style.pointerEvents = 'auto'; btn.style.opacity = '1'; }
+        btn.style.pointerEvents = 'auto'; btn.style.opacity = '';
     });
 }
 
@@ -348,13 +347,10 @@ function openShareCard(){
         }
     }
 
-    // 重置背景为主题
     var inner = document.getElementById('shareCardInner');
     if (inner){
         inner.className = 'sharecard-inner sgbg-theme';
     }
-    var themeRadio = document.querySelector('input[name="shareBg"][value="theme"]');
-    if (themeRadio) themeRadio.checked = true;
 
     overlay.style.display = 'flex';
     document.body.style.overflow = 'hidden';
@@ -381,13 +377,6 @@ function closeShareCard(){
     document.body.style.overflow = '';
 }
 
-/* 切换背景 */
-function switchShareBg(type){
-    var inner = document.getElementById('shareCardInner');
-    if (!inner) return;
-    inner.classList.remove('sgbg-theme', 'sgbg-image');
-    inner.classList.add(type === 'image' ? 'sgbg-image' : 'sgbg-theme');
-}
 
 /* 保存分享图 */
 function saveShareCard(){

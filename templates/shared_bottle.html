@@ -38,6 +38,6 @@
     <span style="color:var(--text-dim);">一位用户收到的漂流瓶</span>
 </p>
 <p class="text-center mt-8">
-    <a href="/auth/register{% if bottle.author and bottle.author.referral_code %}?via={{ bottle.author.referral_code }}{% endif %}" class="btn btn-primary">🌊 一起来玩</a>
+    <a href="/auth/login{% if bottle.author and bottle.author.referral_code %}?via={{ bottle.author.referral_code }}{% endif %}" class="btn btn-primary">🌊 一起来玩</a>
 </p>
 {% endblock %}

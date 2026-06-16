@@ -54,16 +54,6 @@
             <button class="sharecard-close-btn" onclick="closeShareCard()">×</button>
         </div>
 
-        {# 背景选择 #}
-        <div class="sharecard-bg-switch">
-            <label class="sharecard-bg-opt">
-                <input type="radio" name="shareBg" value="theme" checked onchange="switchShareBg(this.value)"> 🌌 星空主题
-            </label>
-            <label class="sharecard-bg-opt">
-                <input type="radio" name="shareBg" value="image" onchange="switchShareBg(this.value)"> 🖼️ 背景图片
-            </label>
-        </div>
-
         {# 预览区（html2canvas 截取此 div） #}
         <div class="sharecard-preview" id="shareCardPreview">
             <div class="sharecard-inner sgbg-theme" id="shareCardInner">

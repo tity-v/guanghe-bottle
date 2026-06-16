@@ -232,8 +232,10 @@ def today_throw_count(uid):
 
 
 def remaining_throws(uid):
-    """计算剩余投递次数"""
-    return max(0, app.config['DAILY_THROW_LIMIT'] - today_throw_count(uid))
+    """计算剩余投递次数（管理员 99 次/天）"""
+    u = User.query.get(uid)
+    limit = 99 if (u and u.is_admin) else app.config['DAILY_THROW_LIMIT']
+    return max(0, limit - today_throw_count(uid))
 
 
 # ══════════════════════════════════════════════════
@@ -282,70 +284,45 @@ def login():
         return redirect(url_for('index'))
     if request.method == 'POST':
         qq = request.form.get('qq', '').strip()
-        pw = request.form.get('password', '')
+        if not qq:
+            flash('请输入QQ号', 'error')
+            ref = request.args.get('ref', type=int)
+            via = request.args.get('via', '').strip()
+            return render_template('login.html', ref_id=ref, via=via)
+
         u = User.query.filter_by(qq=qq).first()
-        if u and u.check_password(pw):
+
+        if u:
+            # 已有账号 → 直接登录
             login_user(u, remember=True)
             nxt = request.args.get('next', url_for('index'))
             flash(f'🌊 欢迎回来，{u.display_name()}！', 'success')
             return redirect(nxt)
-        flash('QQ号或密码错误', 'error')
-    return render_template('login.html')
 
-
-@app.route('/register')
-def register_redirect():
-    """兼容旧链接 /register?via=xxx → /auth/register"""
-    qs = request.query_string.decode('utf-8')
-    return redirect(f'/auth/register?{qs}' if qs else '/auth/register')
-
-
-@app.route('/auth/register', methods=['GET', 'POST'])
-@csrf_required
-def register():
-    if current_user.is_authenticated:
-        return redirect(url_for('index'))
-    # 支持 ?ref=<id> 和 ?via=<referral_code>
-    ref = request.args.get('ref', type=int)
-    via = request.args.get('via', '').strip()
-    if request.method == 'POST':
-        qq = request.form.get('qq', '').strip()
-        pw = request.form.get('password', '')
-        pw2 = request.form.get('password_confirm', '')
-        nick = request.form.get('nickname', '').strip()
-
-        errors = []
-        if User.query.filter_by(qq=qq).first():
-            errors.append('该QQ号已注册')
-        if len(pw) < 6:
-            errors.append('密码至少6位')
-        if pw != pw2:
-            errors.append('两次密码不一致')
-        if not nick:
-            nick = qq
+        # 新用户 → 自动注册
+        nick = request.form.get('nickname', '').strip() or qq
         # 重名检测
-        if User.query.filter_by(nickname=nick).first():
-            errors.append('该用户名已被使用，请换一个')
-
-        if errors:
-            for e in errors:
-                flash(e, 'error')
-            return render_template('register.html', ref_id=ref, via=via)
-
-        # 生成唯一 referral_code
-        base_code = nick
-        code = base_code
+        base_nick = nick
         suffix = 1
-        while User.query.filter_by(referral_code=code).first():
-            code = f"{base_code}{suffix}"
+        while User.query.filter_by(nickname=nick).first():
+            nick = f"{base_nick}{suffix}"
             suffix += 1
 
+        # 生成唯一 referral_code
+        code = base_nick
+        code_suffix = 1
+        while User.query.filter_by(referral_code=code).first():
+            code = f"{base_nick}{code_suffix}"
+            code_suffix += 1
+
         u = User(qq=qq, nickname=nick, referral_code=code)
-        u.set_password(pw)
+        u.set_password('')  # v5 无密码登录
         db.session.add(u)
         db.session.commit()
 
-        # 拉新奖励：优先 via（referral_code），回退 ref（id）
+        # 拉新奖励
+        via = request.args.get('via', '').strip()
+        ref = request.args.get('ref', type=int)
         ref_user = None
         if via:
             ref_user = User.query.filter_by(referral_code=via).first()
@@ -362,10 +339,28 @@ def register():
             db.session.commit()
 
         login_user(u, remember=True)
-        flash('🎉 注册成功！', 'success')
+        flash('🎉 自动注册成功，欢迎加入漂流！', 'success')
         return redirect(url_for('index'))
 
-    return render_template('register.html', ref_id=ref, via=via)
+    ref = request.args.get('ref', type=int)
+    via = request.args.get('via', '').strip()
+    return render_template('login.html', ref_id=ref, via=via)
+
+
+@app.route('/register')
+def register_redirect():
+    """v5: 登录即注册，旧链接重定向到登录页"""
+    qs = request.query_string.decode('utf-8')
+    flash('🎉 输入QQ号即可自动注册，无需密码！', 'info')
+    return redirect(f'/auth/login?{qs}' if qs else '/auth/login')
+
+
+@app.route('/auth/register', methods=['GET', 'POST'])
+def register():
+    """v5: 登录即注册，重定向到登录页"""
+    qs = request.query_string.decode('utf-8')
+    flash('🎉 输入QQ号即可自动注册，无需密码！', 'info')
+    return redirect(f'/auth/login?{qs}' if qs else '/auth/login')
 
 
 @app.route('/auth/logout')
@@ -386,7 +381,8 @@ def throw_bottle():
     if request.method == 'POST':
         # 每日投递次数检查
         if remaining_throws(current_user.id) <= 0:
-            flash(f'今日投递次数已用完（每日 {app.config["DAILY_THROW_LIMIT"]} 次），明天再来吧～', 'warning')
+            limit = 99 if current_user.is_admin else app.config['DAILY_THROW_LIMIT']
+            flash(f'今日投递次数已用完（每日 {limit} 次），明天再来吧～', 'warning')
             return redirect(url_for('throw_bottle'))
 
         # 冷却检查
@@ -463,7 +459,7 @@ def throw_bottle():
             field_b=fb,
             recommendation=rec,
             category=cat,
-            is_approved=False,  # 全部进审核
+            is_approved=is_clean,  # 干净瓶直接上架，有风险进审核
             review_note=('' if is_clean else
                          f'命中敏感词: {",".join(matched)}')
         )
@@ -477,7 +473,7 @@ def throw_bottle():
             db.session.commit()
 
         if is_clean:
-            flash('🌊 漂流瓶已投出！等待管理员审核后上架～', 'success')
+            flash('🌊 漂流瓶已投出，正在星海中漂流！', 'success')
         else:
             flash('⚠️ 内容涉及敏感信息，已标记为有风险，等待管理员审核', 'warning')
         return redirect(url_for('index'))
@@ -535,23 +531,13 @@ def api_salvage():
         DriftBottle.id
     ).filter_by(user_id=current_user.id).subquery()
 
-    # 优先非预设
+    # 随机捞一个：排除已打捞 + 自己投的
     bottle = DriftBottle.query.filter(
         DriftBottle.is_approved == True,
         DriftBottle.is_deleted == False,
         ~DriftBottle.id.in_(salvaged_ids),
-        ~DriftBottle.id.in_(own_ids),
-        DriftBottle.is_preset == False
+        ~DriftBottle.id.in_(own_ids)
     ).order_by(db.func.random()).first()
-
-    if not bottle:
-        bottle = DriftBottle.query.filter(
-            DriftBottle.is_approved == True,
-            DriftBottle.is_deleted == False,
-            ~DriftBottle.id.in_(salvaged_ids),
-            ~DriftBottle.id.in_(own_ids),
-            DriftBottle.is_preset == True
-        ).order_by(db.func.random()).first()
 
     if not bottle:
         return jsonify({'success': False, 'error': '暂时没有可打捞的漂流瓶'})
@@ -860,12 +846,8 @@ def admin_review():
             (DriftBottle.review_note.is_(None))
         )
     else:
-        # 已审核：通过的 + 驳回的（不含 is_deleted 预过滤，否则打回瓶不显示）
-        q = DriftBottle.query.filter(
-            (DriftBottle.is_approved == True) |
-            (DriftBottle.review_note.like('驳回:%')) |
-            (DriftBottle.is_deleted == True)
-        )
+        # 已审核：通过的瓶子
+        q = DriftBottle.query.filter_by(is_approved=True, is_deleted=False)
 
     bottles = q.order_by(DriftBottle.created_at.desc()).paginate(
         page=page, per_page=app.config.get('BOTTLES_PER_PAGE', 20),
@@ -948,7 +930,7 @@ def admin_data():
 # ══════════════════════════════════════════════════
 
 def init_db():
-    """创建表 + 自动迁移旧库 + 写入种子数据"""
+    """创建表 + 自动迁移旧库 + 初始化管理员（v5: 无种子数据）"""
     with app.app_context():
         db.create_all()
 
@@ -971,13 +953,6 @@ def init_db():
             if 'is_deleted' not in bottle_cols:
                 cur.execute("ALTER TABLE drift_bottles ADD COLUMN is_deleted BOOLEAN DEFAULT 0")
                 print('[迁移] 已添加 drift_bottles.is_deleted 列')
-            # 补缺失的 promo_code_used 列
-            if 'promo_code_used' not in cols:
-                try:
-                    cur.execute("ALTER TABLE users ADD COLUMN promo_code_used VARCHAR(50) DEFAULT ''")
-                    print('[迁移] 已添加 users.promo_code_used 列')
-                except:
-                    pass
             # 迁移 email → qq（一次性）
             if 'email' in cols and 'qq' not in cols:
                 print('[迁移] 正在将 email 列改为 qq…')
@@ -989,8 +964,6 @@ def init_db():
                 sel_cols = ['id','email','password_hash','nickname','is_admin','referrer_id']
                 if 'referral_code' in all_cols: sel_cols.append('referral_code')
                 else: sel_cols.append('NULL as referral_code')
-                if 'promo_code_used' in all_cols: sel_cols.append('promo_code_used')
-                else: sel_cols.append("'' as promo_code_used")
                 if 'created_at' in all_cols: sel_cols.append('created_at')
                 else: sel_cols.append('NULL as created_at')
                 admins_old = list(conn.execute(f"SELECT {','.join(sel_cols)} FROM users WHERE is_admin=1"))
@@ -1002,7 +975,6 @@ def init_db():
                     is_admin BOOLEAN DEFAULT 0,
                     referrer_id INTEGER,
                     referral_code VARCHAR(60),
-                    promo_code_used VARCHAR(50) DEFAULT '',
                     created_at DATETIME,
                     FOREIGN KEY(referrer_id) REFERENCES users_mig(id)
                 )''')
@@ -1010,8 +982,8 @@ def init_db():
                 qq_map = {1:'10001',2:'10002',3:'10003'}
                 for row in admins_old:
                     uid = row[0]
-                    conn.execute('INSERT INTO users_mig (id,qq,password_hash,nickname,is_admin,referrer_id,referral_code,promo_code_used,created_at) VALUES (?,?,?,?,?,?,?,?,?)',
-                        (uid, qq_map.get(uid,'admin'+str(uid)), row[2], row[3], row[4], row[5], row[6] or '', row[7] or '', row[8]))
+                    conn.execute('INSERT INTO users_mig (id,qq,password_hash,nickname,is_admin,referrer_id,referral_code,created_at) VALUES (?,?,?,?,?,?,?,?)',
+                        (uid, qq_map.get(uid,'admin'+str(uid)), row[2], row[3], row[4], row[5], row[6] or '', row[7]))
                 conn.execute('DROP TABLE users')
                 conn.execute('ALTER TABLE users_mig RENAME TO users')
                 conn.execute('PRAGMA foreign_keys = ON')
@@ -1040,26 +1012,6 @@ def init_db():
                 db.session.add(a)
 
         db.session.commit()
-
-        # ── 种子瓶子 ──
-        if DriftBottle.query.count() == 0:
-            from seed_data import seed_bottles
-            for s in seed_bottles:
-                db.session.add(DriftBottle(
-                    title=s['title'],
-                    game_name=s['game_name'],
-                    category=s['category'],
-                    field_a=s['field_a'],
-                    field_b=s['field_b'],
-                    recommendation=s['recommendation'],
-                    image_path='static/images/placeholder.png',
-                    thumbnail_path='static/images/placeholder_thumb.png',
-                    is_preset=True,
-                    is_approved=True,
-                ))
-            db.session.commit()
-
-
 
 # ══════════════════════════════════════════════════
 # 启动

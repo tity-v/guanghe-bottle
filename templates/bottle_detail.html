@@ -44,7 +44,7 @@
 
 {% if not current_user.is_authenticated %}
 <p class="text-center mt-16">
-    <a href="/auth/register{% if bottle.author and bottle.author.referral_code %}?via={{ bottle.author.referral_code }}{% endif %}" class="btn btn-primary">🌊 一起来玩漂流瓶</a>
+    <a href="/auth/login{% if bottle.author and bottle.author.referral_code %}?via={{ bottle.author.referral_code }}{% endif %}" class="btn btn-primary">🌊 一起来玩漂流瓶</a>
 </p>
 {% endif %}
 {% endblock %}

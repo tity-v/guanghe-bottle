@@ -74,7 +74,6 @@ class DriftBottle(db.Model):
     category = db.Column(db.String(30), nullable=False)
 
     # 审核
-    is_preset = db.Column(db.Boolean, default=False)
     is_approved = db.Column(db.Boolean, default=False)  # 默认待审
     is_deleted = db.Column(db.Boolean, default=False)   # 软删除
     review_note = db.Column(db.String(200), default='')
@@ -101,7 +100,6 @@ class DriftBottle(db.Model):
             'image_path': self.image_path,
             'thumbnail_path': self.thumbnail_path,
             'author_nickname': self.author.display_name() if self.author else '匿名投递者',
-            'is_preset': self.is_preset,
             'created_at': self.created_at.strftime('%Y-%m-%d %H:%M') if self.created_at else '',
             'like_count': self.like_count,
         }

@@ -1011,6 +1011,24 @@ def init_db():
                 a.set_password('admin123')
                 db.session.add(a)
 
+        # ── v5 一次性清理：清空瓶子 + 非管理员用户 ──
+        import sqlite3 as _sql
+        _db_path = os.path.join(app.instance_path, 'bottle.db')
+        if os.path.exists(_db_path):
+            _conn = _sql.connect(_db_path)
+            _cur = _conn.cursor()
+            _cur.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='v5_migration'")
+            if not _cur.fetchone():
+                BottleLike.query.delete()
+                SalvageRecord.query.delete()
+                DriftBottle.query.delete()
+                User.query.filter_by(is_admin=False).delete()
+                _cur.execute("CREATE TABLE v5_migration (done BOOLEAN)")
+                _cur.execute("INSERT INTO v5_migration VALUES (1)")
+                _conn.commit()
+                print('[v5] 已清空所有瓶子、打捞记录、非管理员用户')
+            _conn.close()
+
         db.session.commit()
 
 # ══════════════════════════════════════════════════

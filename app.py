@@ -7,6 +7,8 @@
 import os
 import secrets
 import uuid
+import logging
+import traceback
 from datetime import date, datetime, timezone
 from functools import wraps
 import re
@@ -22,7 +24,10 @@ from models import (AdminLog, BottleLike, DailyTask, DriftBottle,
                     SalvageRecord, ShareRecord, User, db)
 
 # ── 应用初始化 ──────────────────────────────────
-app = Flask(__name__)
+# 持久化数据目录（Railway 卷挂载 /data，本地默认 = app.py 所在目录）
+DATA_DIR = os.environ.get('DATA_DIR', os.path.abspath(os.path.dirname(__file__)))
+
+app = Flask(__name__, instance_path=os.path.join(DATA_DIR, 'instance'))
 app.config.from_object(Config)
 app.jinja_env.auto_reload = True
 
@@ -33,8 +38,29 @@ login_manager.init_app(app)
 login_manager.login_view = 'login'
 login_manager.login_message = '请先登录～'
 
-BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+
+# ── 日志（生产环境输出到 stdout，Railway 日志可见） ──
+logging.basicConfig(
+    level=logging.INFO,
+    format='[%(asctime)s] %(levelname)s %(name)s: %(message)s'
+)
+logger = logging.getLogger('guanghe')
+
+
+@app.errorhandler(500)
+def internal_error(e):
+    """全局 500 兜底，打印完整 traceback 到 Railway 日志"""
+    logger.error('500 Internal Server Error:\n%s',
+                 traceback.format_exc())
+    return render_template('error.html', code=500,
+                           message='服务器内部错误，请稍后重试'), 500
+
+
+@app.errorhandler(404)
+def not_found(e):
+    return render_template('error.html', code=404,
+                           message='页面未找到'), 404
 
 
 @login_manager.user_loader
@@ -126,8 +152,10 @@ def save_upload_image(file):
     except Exception:
         os.remove(ipath)
         raise ValueError('图片处理失败，请上传有效的 JPG/PNG/WebP 图片')
-    ri = os.path.relpath(ipath, BASE_DIR).replace('\\', '/')
-    rt = os.path.relpath(tpath, BASE_DIR).replace('\\', '/')
+    # URL 路径（独立于物理存储位置，解耦 Railway 卷挂载）
+    url_prefix = f"uploads/bottles/{now.year}/{now.month:02d}"
+    ri = f"{url_prefix}/{uname}"
+    rt = f"{url_prefix}/{tname}"
     return ri, rt
 
 
@@ -590,13 +618,19 @@ def api_toggle_like(bid):
 
 @app.route('/bottle/<int:bid>')
 def bottle_detail(bid):
-    b = DriftBottle.query.get_or_404(bid)
-    # 管理员可查看所有瓶子（含已删除），普通用户不可见已删除
-    if b.is_deleted and not (current_user.is_authenticated and current_user.is_admin):
-        abort(404)
-    return render_template('bottle_detail.html',
-                           bottle=b,
-                           cat_info=Config.get_category(b.category))
+    try:
+        b = DriftBottle.query.get_or_404(bid)
+        # 管理员可查看所有瓶子（含已删除），普通用户不可见已删除/未审核
+        if b.is_deleted and not (current_user.is_authenticated and current_user.is_admin):
+            abort(404)
+        if not b.is_approved and not (current_user.is_authenticated and current_user.is_admin):
+            abort(404)
+        return render_template('bottle_detail.html',
+                               bottle=b,
+                               cat_info=Config.get_category(b.category))
+    except Exception:
+        logger.error('bottle_detail(%d) 渲染失败:\n%s', bid, traceback.format_exc())
+        abort(500)
 
 
 @app.route('/s/bottle/<int:bid>')
@@ -638,7 +672,7 @@ def my_wall():
         is_saved_to_wall=True
     ).order_by(SalvageRecord.salvaged_at.desc()).all()
     return render_template('wall.html',
-                           bottles=[r.bottle for r in items],
+                           bottles=[r.bottle for r in items if r.bottle is not None],
                            is_mine=True)
 
 
@@ -652,7 +686,7 @@ def shared_wall(uid):
         is_saved_to_wall=True
     ).order_by(SalvageRecord.salvaged_at.desc()).all()
     return render_template('wall_public.html',
-                           bottles=[r.bottle for r in items],
+                           bottles=[r.bottle for r in items if r.bottle is not None],
                            wall_user=u,
                            via=via)
 
@@ -1025,6 +1059,24 @@ def init_db():
             db.session.execute(text("INSERT INTO v5_migration VALUES (1)"))
             db.session.commit()
             print('[v5] 已清空所有瓶子、打捞记录、非管理员用户')
+
+        db.session.commit()
+
+        # ── 启用 WAL 模式：提升并发读性能，避免 database is locked ──
+        db.session.execute(text("PRAGMA journal_mode=WAL"))
+        db.session.execute(text("PRAGMA busy_timeout=5000"))
+
+        # ── 清理孤立的 SalvageRecord（引用的瓶子已被硬删除） ──
+        orphan_ids = db.session.execute(text(
+            "SELECT sr.id FROM salvage_records sr "
+            "LEFT JOIN drift_bottles db ON sr.bottle_id = db.id "
+            "WHERE db.id IS NULL"
+        )).fetchall()
+        if orphan_ids:
+            for (oid,) in orphan_ids:
+                db.session.execute(text("DELETE FROM salvage_records WHERE id = :id"), {"id": oid})
+            db.session.commit()
+            print(f'[维护] 已清理 {len(orphan_ids)} 条孤立打捞记录')
 
         db.session.commit()
 

@@ -7,12 +7,17 @@ import os
 
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))
 
+# 持久化数据目录 — Railway 上设为 /data（卷挂载点），本地默认 = BASE_DIR
+DATA_DIR = os.environ.get('DATA_DIR', BASE_DIR)
+
 
 class Config:
     """全局配置"""
 
     # ── Flask 核心 ──────────────────────────────
-    _key_file = os.path.join(os.path.dirname(__file__), 'instance', '.secret_key')
+    # SECRET_KEY 优先级：环境变量 > 文件 > 随机生成
+    # Railway 部署务必设置 SECRET_KEY 环境变量，否则每次重启 session 都会失效
+    _key_file = os.path.join(DATA_DIR, 'instance', '.secret_key')
     _env_key = os.environ.get('SECRET_KEY')
     if _env_key:
         SECRET_KEY = _env_key
@@ -31,12 +36,12 @@ class Config:
     # ── 数据库 ──────────────────────────────────
     SQLALCHEMY_DATABASE_URI = os.environ.get(
         'DATABASE_URL',
-        f'sqlite:///{os.path.join(BASE_DIR, "instance", "bottle.db")}'
+        f'sqlite:///{os.path.join(DATA_DIR, "instance", "bottle.db")}'
     )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # ── 上传 ────────────────────────────────────
-    UPLOAD_FOLDER = os.path.join(BASE_DIR, 'uploads', 'bottles')
+    UPLOAD_FOLDER = os.path.join(DATA_DIR, 'uploads', 'bottles')
     MAX_CONTENT_LENGTH = 20 * 1024 * 1024   # 20 MB
     ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'webp'}
     THUMBNAIL_SIZE = (400, 300)

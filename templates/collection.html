@@ -10,16 +10,17 @@
 <div class="collection-grid" id="collectionGrid">
     {% for r in records %}
     {% set b = r.bottle %}
+    {% if b %}
     <div class="cl-card" id="clCard{{ b.id }}">
         <a href="/bottle/{{ b.id }}" class="cl-thumb-wrap">
-            <img src="/{{ b.thumbnail_path or b.image_path }}" alt="{{ b.title }}" loading="lazy">
+            <img src="/{{ b.thumbnail_path or b.image_path }}" alt="{{ b.title }}" loading="lazy" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><rect fill=%22%231a2540%22 width=%22400%22 height=%22300%22/><text fill=%22%23566a8a%22 x=%22200%22 y=%22150%22 text-anchor=%22middle%22 dominant-baseline=%22central%22 font-size=%2248%22>🫧</text></svg>'">
         </a>
         <div class="cl-info">
             <a href="/bottle/{{ b.id }}" class="cl-title">{{ b.title[:18] }}{% if b.title|length > 18 %}…{% endif %}</a>
             <div class="cl-game">🎮 {{ b.game_name[:14] }}</div>
             <div class="cl-meta">
                 <span class="cl-cat">
-                    {% set ci = config.get_category_info(b.category) %}
+                    {% set ci = get_category(b.category) %}
                     {{ ci.icon if ci else '📦' }} {{ ci.name if ci else b.category }}
                 </span>
                 <span class="cl-date">{{ r.salvaged_at.strftime('%m-%d %H:%M') if r.salvaged_at else '' }}</span>
@@ -38,6 +39,7 @@
             {% endif %}
         </div>
     </div>
+    {% endif %}
     {% endfor %}
 </div>
 {% else %}

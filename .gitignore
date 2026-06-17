@@ -12,6 +12,9 @@ venv/
 .venv/
 env/
 
+# Persistent data (local simulation of Railway volume)
+data/
+
 # Database
 instance/
 *.db

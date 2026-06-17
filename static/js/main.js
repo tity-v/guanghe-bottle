@@ -140,6 +140,15 @@ document.addEventListener('DOMContentLoaded', function(){
         }, 5000);
     });
 
+    // 全局图片加载失败兜底（安利墙/瓶子详情/打捞结果等动态渲染的图片）
+    document.addEventListener('error', function(e){
+        var el = e.target;
+        if (el && el.tagName === 'IMG' && !el.dataset.fallbackTried){
+            el.dataset.fallbackTried = '1';
+            el.src = 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><rect fill=%22%231a2540%22 width=%22400%22 height=%22300%22/><text fill=%22%23566a8a%22 x=%22200%22 y=%22150%22 text-anchor=%22middle%22 dominant-baseline=%22central%22 font-size=%2248%22>🫧</text></svg>';
+        }
+    }, true); // 捕获阶段，确保能拦截动态添加的图片
+
     // 底部导航高亮
     var path = location.pathname;
     document.querySelectorAll('.bottom-nav .tab').forEach(function(t){

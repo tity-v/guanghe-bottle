@@ -9,7 +9,7 @@
 <div class="wall-grid nine">
     {% for b in bottles %}
     <a href="/bottle/{{ b.id }}" class="wall-card">
-        <img src="/{{ b.image_path }}" alt="{{ b.title }}">
+        <img src="/{{ b.image_path }}" alt="{{ b.title }}" onerror="this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22400%22 height=%22300%22><rect fill=%22%231a2540%22 width=%22400%22 height=%22300%22/><text fill=%22%23566a8a%22 x=%22200%22 y=%22150%22 text-anchor=%22middle%22 dominant-baseline=%22central%22 font-size=%2248%22>🫧</text></svg>'">
         <div class="wc-label">{{ b.title[:12] }}</div>
     </a>
     {% endfor %}

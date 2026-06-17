@@ -819,10 +819,13 @@ def admin_dashboard():
     stats = {
         'total_users': User.query.count(),
         'total_bottles': DriftBottle.query.filter_by(is_deleted=False).count(),
-        'approved': DriftBottle.query.filter_by(
-            is_approved=True, is_deleted=False).count(),
+        'approved': DriftBottle.query.filter(
+            DriftBottle.is_approved == True,
+            DriftBottle.is_deleted == False,
+            DriftBottle.review_note.like('管理员审核通过%')
+        ).count(),
         'pending': DriftBottle.query.filter(
-            DriftBottle.is_approved == False,
+            DriftBottle.is_approved == True,
             DriftBottle.is_deleted == False,
             (DriftBottle.review_note == '') |
             (DriftBottle.review_note.is_(None))
@@ -873,15 +876,18 @@ def admin_review():
         )
     elif tab == 'pending':
         q = DriftBottle.query.filter_by(is_deleted=False)
-        # 干净，待审
+        # 干净自动上架，待管理员二轮审核
         q = q.filter(
-            DriftBottle.is_approved == False,
+            DriftBottle.is_approved == True,
             (DriftBottle.review_note == '') |
             (DriftBottle.review_note.is_(None))
         )
     else:
-        # 已审核：通过的瓶子
-        q = DriftBottle.query.filter_by(is_approved=True, is_deleted=False)
+        # 已审核：管理员手动操作过的（通过 or 驳回）
+        q = DriftBottle.query.filter(
+            DriftBottle.review_note.like('管理员审核通过%') |
+            DriftBottle.review_note.like('驳回:%')
+        )
 
     bottles = q.order_by(DriftBottle.created_at.desc()).paginate(
         page=page, per_page=app.config.get('BOTTLES_PER_PAGE', 20),

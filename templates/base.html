@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width,initial-scale=1.0,viewport-fit=cover,user-scalable=no">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}光核安利漂流瓶{% endblock %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}?v=20250618a">
     {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
@@ -114,7 +114,7 @@
         window._transitionPause = {{ config.TRANSITION_PAUSE_MS or 1000 }};
         window._whiteScreenMs = {{ config.WHITE_SCREEN_MS or 1000 }};
     </script>
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/main.js') }}?v=20250618a"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

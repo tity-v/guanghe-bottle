@@ -317,10 +317,8 @@ function openShareCard(){
             if (i < items.length){
                 var div = document.createElement('div');
                 div.className = 'sc-wall-item';
-                var img = document.createElement('img');
-                img.src = items[i].src;
-                img.alt = '';
-                div.appendChild(img);
+                // 用 background-image 而非 <img>：html2canvas 支持 background-size:cover 但不支持 object-fit:cover
+                div.style.backgroundImage = 'url(' + items[i].src + ')';
                 scWall.appendChild(div);
             } else {
                 var empty = document.createElement('div');

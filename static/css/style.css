@@ -535,18 +535,13 @@ textarea.input{min-height:90px;resize:vertical}
 .sc-wall.nine-layout{grid-template-columns:repeat(3,1fr)}
 .sc-wall.four-layout{grid-template-columns:repeat(2,1fr)}
 .sc-wall-item{
-    position:relative;
-    padding-bottom:133.33%; /* 3:4 比例，html2canvas 兼容 */
     border-radius:8px;overflow:hidden;
-    background-color:var(--glass);
-    background-size:cover;
-    background-position:center;
-    background-repeat:no-repeat;
-    border:1px solid var(--glass-border);
+    background:var(--glass);border:1px solid var(--glass-border);
 }
+.sc-wall-item img{width:100%;display:block}
 .sc-wall-empty{
     position:relative;
-    padding-bottom:133.33%; /* 3:4 比例，html2canvas 兼容 */
+    padding-bottom:133.33%;
     border:1px dashed rgba(100,160,220,.15);
     border-radius:8px;display:flex;align-items:center;
     justify-content:center;color:rgba(100,160,220,.15);

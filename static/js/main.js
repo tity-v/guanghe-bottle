@@ -296,7 +296,42 @@ function switchLayout(layout){
 var _shareCardQR = null; // QR 实例
 var _preRenderedBlob = null; // 预生成的分享图 blob
 
-/* 打开分享图弹窗 → 立即预渲染图片 */
+/**
+ * Canvas 预裁剪：模拟 object-fit:cover → 居中裁剪到 targetW×targetH → 返回 dataURL
+ * html2canvas 既不兼容 object-fit 也不兼容 background-size:cover，预裁剪是最可靠方案
+ */
+function cropToCover(src, targetW, targetH){
+    return new Promise(function(resolve){
+        var img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = function(){
+            var cvs = document.createElement('canvas');
+            cvs.width = targetW;
+            cvs.height = targetH;
+            var ctx = cvs.getContext('2d');
+            var ir = img.width / img.height;
+            var tr = targetW / targetH;
+            var sx, sy, sw, sh;
+            if (ir > tr){
+                sh = img.height;
+                sw = img.height * tr;
+                sx = (img.width - sw) / 2;
+                sy = 0;
+            } else {
+                sw = img.width;
+                sh = img.width / tr;
+                sx = 0;
+                sy = (img.height - sh) / 2;
+            }
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, targetW, targetH);
+            resolve(cvs.toDataURL('image/jpeg', 0.88));
+        };
+        img.onerror = function(){ resolve(null); };
+        img.src = src;
+    });
+}
+
+/* 打开分享图弹窗 → 预裁剪全部图片 → 填充 */
 function openShareCard(){
     var overlay = document.getElementById('shareCardOverlay');
     if (!overlay) return;
@@ -313,19 +348,36 @@ function openShareCard(){
         scWall.innerHTML = '';
         var items = document.querySelectorAll('#wallGrid .wall-card img');
         var total = layout === 'four' ? 4 : 9;
+        var count = Math.min(items.length, total);
+
+        // 先搭骨架（占位）
+        var cells = [];
         for (var i = 0; i < total; i++){
-            if (i < items.length){
-                var div = document.createElement('div');
+            var div = document.createElement('div');
+            if (i < count){
                 div.className = 'sc-wall-item';
-                // 用 background-image 而非 <img>：html2canvas 支持 background-size:cover 但不支持 object-fit:cover
-                div.style.backgroundImage = 'url(' + items[i].src + ')';
-                scWall.appendChild(div);
+                cells.push(div);
             } else {
-                var empty = document.createElement('div');
-                empty.className = 'sc-wall-empty';
-                empty.textContent = '·';
-                scWall.appendChild(empty);
+                div.className = 'sc-wall-empty';
+                div.textContent = '·';
             }
+            scWall.appendChild(div);
+        }
+
+        // 异步裁剪每张图 → 填回骨架（预裁剪为 300×400 3:4，无需 object-fit）
+        for (var j = 0; j < count; j++){
+            (function(idx){
+                cropToCover(items[idx].src, 300, 400).then(function(dataUrl){
+                    if (dataUrl){
+                        var img = document.createElement('img');
+                        img.src = dataUrl;
+                        img.alt = '';
+                        img.style.width = '100%';
+                        img.style.display = 'block';
+                        cells[idx].appendChild(img);
+                    }
+                });
+            })(j);
         }
     }
 
@@ -345,7 +397,6 @@ function openShareCard(){
                 correctLevel: QRCode.CorrectLevel.M
             });
         } catch(e){
-            // 回退：用 API 生成
             var fallback = document.createElement('img');
             fallback.src = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodeURIComponent(qrUrl);
             fallback.width = 90; fallback.height = 90;

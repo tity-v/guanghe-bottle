@@ -408,26 +408,21 @@ function saveShareCard(){
             backgroundColor: null,
             scale: 2  // 2x 清晰度
         }).then(function(canvas){
-            // 转为下载链接
-            canvas.toBlob(function(blob){
-                var url = URL.createObjectURL(blob);
-                // 移动端：弹图片让用户长按保存
-                // 桌面端：触发下载
-                if (/Mobi|Android|iPhone/i.test(navigator.userAgent)){
-                    // 移动端：显示大图让用户长按
-                    showImageForSave(url);
-                } else {
-                    // 桌面端：直接下载
-                    var a = document.createElement('a');
-                    a.href = url;
-                    a.download = '光核安利漂流瓶_分享图.png';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
-                    showToast('✅ 图片已保存！', 'success');
-                }
-            }, 'image/png');
+            // dataURL（base64）：手机浏览器长按保存兼容性好于 blob URL
+            var dataUrl = canvas.toDataURL('image/png');
+            if (/Mobi|Android|iPhone/i.test(navigator.userAgent)){
+                // 移动端：弹图片让用户长按保存（dataURL 可被保存）
+                showImageForSave(dataUrl);
+            } else {
+                // 桌面端：直接下载
+                var a = document.createElement('a');
+                a.href = dataUrl;
+                a.download = '光核安利漂流瓶_分享图.png';
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                showToast('✅ 图片已保存！', 'success');
+            }
         }).catch(function(e){
             console.error('html2canvas error:', e);
             showToast('生成失败：' + e.message, 'error');
@@ -457,26 +452,42 @@ function saveShareCard(){
 }
 
 /* 移动端显示大图以便长按保存 */
-function showImageForSave(url){
+function showImageForSave(dataUrl){
     var overlay = document.createElement('div');
     overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;';
     overlay.onclick = function(){ overlay.remove(); };
 
     var img = document.createElement('img');
-    img.src = url;
-    img.style.cssText = 'max-width:95vw;max-height:75vh;border-radius:12px;box-shadow:0 0 40px rgba(77,201,246,.3);';
+    img.src = dataUrl;
+    img.style.cssText = 'max-width:95vw;max-height:70vh;border-radius:12px;box-shadow:0 0 40px rgba(77,201,246,.3);';
 
     var tip = document.createElement('p');
-    tip.style.cssText = 'color:#e4e8ee;font-size:14px;margin-top:16px;text-align:center;';
+    tip.style.cssText = 'color:#e4e8ee;font-size:14px;margin-top:14px;text-align:center;';
     tip.textContent = '👆 长按图片保存到相册';
 
     var close = document.createElement('button');
     close.textContent = '关闭';
-    close.style.cssText = 'margin-top:12px;padding:10px 32px;background:var(--amber, #f78000);color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;';
+    close.style.cssText = 'margin-top:10px;padding:10px 32px;background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;';
     close.onclick = function(e){ e.stopPropagation(); overlay.remove(); };
+
+    // 备选：下载按钮（部分手机浏览器长按 blob/dataURL 仍可能失败）
+    var download = document.createElement('button');
+    download.textContent = '📥 无法保存？点此下载';
+    download.style.cssText = 'margin-top:8px;padding:10px 32px;background:var(--amber,#f78000);color:#fff;border:none;border-radius:20px;font-size:14px;font-weight:600;cursor:pointer;';
+    download.onclick = function(e){
+        e.stopPropagation();
+        var a = document.createElement('a');
+        a.href = dataUrl;
+        a.download = '光核安利漂流瓶_分享图.png';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        showToast('✅ 图片已保存！', 'success');
+    };
 
     overlay.appendChild(img);
     overlay.appendChild(tip);
+    overlay.appendChild(download);
     overlay.appendChild(close);
     document.body.appendChild(overlay);
 }

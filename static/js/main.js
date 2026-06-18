@@ -346,9 +346,18 @@ function openShareCard(){
         scWall.className = 'sc-wall';
         scWall.classList.add(layout === 'four' ? 'four-layout' : 'nine-layout');
         scWall.innerHTML = '';
+        // 同时收集图片 src 和标题
+        var cards = document.querySelectorAll('#wallGrid .wall-card');
         var items = document.querySelectorAll('#wallGrid .wall-card img');
         var total = layout === 'four' ? 4 : 9;
         var count = Math.min(items.length, total);
+
+        // 提取标题（与图片顺序一致）
+        var titles = [];
+        for (var k = 0; k < count; k++){
+            var label = cards[k].querySelector('.wc-label');
+            titles.push(label ? label.textContent.trim() : '');
+        }
 
         // 先搭骨架（占位）
         var cells = [];
@@ -356,7 +365,7 @@ function openShareCard(){
             var div = document.createElement('div');
             if (i < count){
                 div.className = 'sc-wall-item';
-                cells.push(div);
+                cells.push({box: div, title: titles[i]});
             } else {
                 div.className = 'sc-wall-empty';
                 div.textContent = '·';
@@ -364,17 +373,25 @@ function openShareCard(){
             scWall.appendChild(div);
         }
 
-        // 异步裁剪每张图 → 填回骨架（预裁剪为 300×400 3:4，无需 object-fit）
+        // 异步裁剪每张图 → 填图片 + 标题
         for (var j = 0; j < count; j++){
             (function(idx){
                 cropToCover(items[idx].src, 300, 400).then(function(dataUrl){
                     if (dataUrl){
+                        var cell = cells[idx];
                         var img = document.createElement('img');
                         img.src = dataUrl;
-                        img.alt = '';
+                        img.alt = cell.title || '';
                         img.style.width = '100%';
                         img.style.display = 'block';
-                        cells[idx].appendChild(img);
+                        cell.box.appendChild(img);
+                        // 标题（跟在图片下方）
+                        if (cell.title){
+                            var labelEl = document.createElement('div');
+                            labelEl.className = 'sc-wall-title';
+                            labelEl.textContent = cell.title;
+                            cell.box.appendChild(labelEl);
+                        }
                     }
                 });
             })(j);

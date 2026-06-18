@@ -539,6 +539,13 @@ textarea.input{min-height:90px;resize:vertical}
     background:var(--glass);border:1px solid var(--glass-border);
 }
 .sc-wall-item img{width:100%;display:block}
+.sc-wall-title{
+    padding:5px 6px;
+    font-size:11px;font-weight:600;color:var(--text);
+    text-align:center;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+    background:rgba(5,13,26,.6);
+}
 .sc-wall-empty{
     position:relative;
     padding-bottom:133.33%;

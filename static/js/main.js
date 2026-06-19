@@ -403,20 +403,20 @@ function openShareCard(){
     if (qrBox){
         qrBox.innerHTML = '';
         var refCode = window._referralCode || window._currentUserId || '';
-        var qrUrl = location.origin + '/s/wall/' + (window._currentUserId || '') + '?via=' + refCode;
+        var qrUrl = location.origin + '/j/' + (window._currentUserId || '');
         try {
             _shareCardQR = new QRCode(qrBox, {
                 text: qrUrl,
-                width: 90,
-                height: 90,
+                width: 180,
+                height: 180,
                 colorDark: '#050d1a',
                 colorLight: '#ffffff',
-                correctLevel: QRCode.CorrectLevel.M
+                correctLevel: QRCode.CorrectLevel.L
             });
         } catch(e){
             var fallback = document.createElement('img');
-            fallback.src = 'https://api.qrserver.com/v1/create-qr-code/?size=90x90&data=' + encodeURIComponent(qrUrl);
-            fallback.width = 90; fallback.height = 90;
+            fallback.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(qrUrl);
+            fallback.width = 180; fallback.height = 180;
             fallback.alt = 'QR';
             qrBox.appendChild(fallback);
         }

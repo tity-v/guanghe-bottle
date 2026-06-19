@@ -568,7 +568,7 @@ textarea.input{min-height:90px;resize:vertical}
     border-radius:8px;line-height:0;
 }
 .sc-qr-box canvas,
-.sc-qr-box img{display:block;width:90px;height:90px}
+.sc-qr-box img{display:block;width:120px;height:120px}
 .sc-bottom-text{
     flex:1;display:flex;flex-direction:column;justify-content:center;
     min-width:0;
@@ -626,7 +626,7 @@ textarea.input{min-height:90px;resize:vertical}
     .sc-logo-img{height:32px}
     .sc-bottom-row{gap:8px}
     .sc-qr-box canvas,
-    .sc-qr-box img{width:68px;height:68px}
+    .sc-qr-box img{width:90px;height:90px}
     .sc-qr-label{font-size:11px}
     .sc-act-main{font-size:14px;padding:10px 16px}
     .sc-act-sub{font-size:14px;padding:12px 16px}

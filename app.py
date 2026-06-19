@@ -691,6 +691,14 @@ def shared_wall(uid):
                            via=via)
 
 
+@app.route('/j/<int:uid>')
+def jump_shared_wall(uid):
+    """短链接跳转 — 供分享图二维码使用，缩短 URL 降低 QR 密度"""
+    u = User.query.get_or_404(uid)
+    via = u.referral_code or str(uid)
+    return redirect(url_for('shared_wall', uid=uid, via=via))
+
+
 @app.route('/api/bottle/<int:bid>/save-wall', methods=['POST'])
 @login_required
 @csrf_required

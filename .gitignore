@@ -37,6 +37,7 @@ Thumbs.db
 .env
 .env.production
 static/images/_originals/
+static/images/_backup/
 static/css/*.bak
 .agents/
 skills-lock.json

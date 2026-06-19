@@ -2,15 +2,15 @@
 {% block title %}光核安利漂流瓶 · 首页{% endblock %}
 {% block content %}
 <div class="home-view">
-    <img src="{{ url_for('static', filename='images/logo-title.png') }}" class="hero-logo" alt="光核安利漂流瓶">
+    <img src="{{ url_for('static', filename='images/logo-title.webp') }}" class="hero-logo" alt="光核安利漂流瓶">
     <p class="hero-tag">把故事装进瓶子，让它漂向星海</p>
 
     <div class="action-strip">
         <a href="{% if current_user.is_authenticated %}/throw{% else %}{{ url_for('login') }}{% endif %}" class="img-btn">
-            <img src="{{ url_for('static', filename='images/btn-throw.png') }}" alt="投递漂流瓶">
+            <img src="{{ url_for('static', filename='images/btn-throw.webp') }}" alt="投递漂流瓶">
         </a>
         <a href="{% if current_user.is_authenticated %}/salvage{% else %}{{ url_for('login') }}{% endif %}" class="img-btn">
-            <img src="{{ url_for('static', filename='images/bottle-retouch.png') }}" alt="打捞漂流瓶">
+            <img src="{{ url_for('static', filename='images/bottle-retouch.webp') }}" alt="打捞漂流瓶">
         </a>
     </div>
 

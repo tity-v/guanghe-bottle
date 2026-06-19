@@ -334,7 +334,7 @@ textarea.input{min-height:90px;resize:vertical}
 /* 瓶子展示 — 整张信纸 PNG 作为卡片背景 */
 .reveal-card{
     max-width:440px;margin:0 auto;
-    background: url('../images/letter-paper.png') center/100% 100% no-repeat;
+    background: url('../images/letter-paper.webp') center/100% 100% no-repeat;
     border-radius:0;overflow:hidden;
     animation:riseUp .6s cubic-bezier(.34,1.56,.64,1);
     padding:12% 9% 10% 9%;

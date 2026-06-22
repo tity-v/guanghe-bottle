@@ -31,6 +31,7 @@
         <button class="btn-like" onclick="{% if current_user.is_authenticated %}toggleLike({{ bottle.id }}){% else %}location.href='{{ url_for('login') }}'{% endif %}">
             <span class="heart">❤️</span> <span class="like-count">{{ bottle.like_count }}</span>
         </button>
+        <button class="btn btn-primary btn-sm" onclick="openBottleShareCard({{ bottle.id }},'{{ bottle.title|e }}')">📸 生成分享图</button>
         <button class="btn btn-secondary btn-sm" onclick="copyShareLink('bottle',{{ bottle.id }})">📤 分享</button>
     </div>
 </div>
@@ -40,4 +41,78 @@
 <p class="text-center mt-8">
     <a href="/auth/login{% if bottle.author and bottle.author.referral_code %}?via={{ bottle.author.referral_code }}{% endif %}" class="btn btn-primary">🌊 一起来玩</a>
 </p>
+
+{#══════════════════════════════════════════════════#}
+{#  单瓶分享图弹窗                                    #}
+{#══════════════════════════════════════════════════#}
+<div class="sharecard-overlay" id="bottleShareCardOverlay" onclick="event.target===this&&closeBottleShareCard()">
+    <div class="sharecard-dialog">
+        <div class="sharecard-topbar">
+            <span>📸 分享这个漂流瓶</span>
+            <button class="sharecard-close-btn" onclick="closeBottleShareCard()">×</button>
+        </div>
+
+        <div class="sharecard-preview" id="bottleShareCardPreview">
+            <div class="sharecard-inner sgbg-theme" id="bottleShareCardInner">
+                <div class="sc-title-area">
+                    <img class="sc-logo-img" src="{{ url_for('static', filename='images/logo-title.webp') }}" alt="光核安利漂流瓶">
+                    <div class="sc-slogan">发现游戏玩家的宝藏安利</div>
+                    <div class="sc-divider"></div>
+                </div>
+
+                <div class="bsc-content">
+                    <img class="bsc-img" src="/{{ bottle.image_path }}" alt="{{ bottle.title }}" onerror="this.onerror=null;this.style.display='none'">
+                    <div class="bsc-body">
+                        <span class="bsc-cat">{% if cat_info %}{{ cat_info.icon }} {{ cat_info.name }}{% endif %}</span>
+                        <div class="bsc-title">{{ bottle.title }}</div>
+                        <div class="bsc-game">🎮 {{ bottle.game_name }}</div>
+                        {% if bottle.field_a %}
+                        <div class="bsc-field">
+                            <span class="bsc-fl">{% if cat_info %}{{ cat_info.field_a_label }}{% endif %}</span>
+                            {{ bottle.field_a }}
+                        </div>
+                        {% endif %}
+                        {% if bottle.field_b %}
+                        <div class="bsc-field">
+                            <span class="bsc-fl">{% if cat_info %}{{ cat_info.field_b_label }}{% endif %}</span>
+                            {{ bottle.field_b }}
+                        </div>
+                        {% endif %}
+                        {% if bottle.recommendation %}
+                        <div class="bsc-rec">💬 {{ bottle.recommendation }}</div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <div class="sc-bottom-row">
+                    <div class="sc-qr-box" id="bottleShareCardQR"></div>
+                    <div class="sc-bottom-text">
+                        <div class="sc-qr-label">长按识别二维码</div>
+                        <div class="sc-qr-sub">查看这个漂流瓶 🌊</div>
+                        <div class="sc-footer">
+                            来自 <strong>{{ bottle.author.display_name() if bottle.author else '匿名' }}</strong> 的安利
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sharecard-actions">
+            <button class="sc-act-main" onclick="saveBottleShareCard()">💾 保存分享图</button>
+            <div class="sc-act-row">
+                <button class="sc-act-sub" onclick="copyBottleShareLink({{ bottle.id }})">🔗 复制链接</button>
+                <button class="sc-act-sub" onclick="closeBottleShareCard()">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+{#══ 单瓶分享图 END ══#}
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js" defer>
+</script>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js" defer>
+</script>
 {% endblock %}

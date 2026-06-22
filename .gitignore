@@ -41,3 +41,4 @@ static/images/_backup/
 static/css/*.bak
 .agents/
 skills-lock.json
+test-results/

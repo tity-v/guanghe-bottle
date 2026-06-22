@@ -474,24 +474,37 @@ function saveShareCard(){
             backgroundColor: null,
             scale: 2  // 2x 清晰度
         }).then(function(canvas){
-            // dataURL（base64）：手机浏览器长按保存兼容性好于 blob URL
             var dataUrl = canvas.toDataURL('image/png');
             if (/Mobi|Android|iPhone/i.test(navigator.userAgent)){
-                // 移动端：弹图片让用户长按保存（dataURL 可被保存）
+                // 移动端：弹图片让用户长按保存
                 showImageForSave(dataUrl);
             } else {
-                // 桌面端：直接下载
-                var a = document.createElement('a');
-                a.href = dataUrl;
-                a.download = '光核安利漂流瓶_分享图.png';
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                showToast('✅ 图片已保存！', 'success');
+                // 桌面端：优先 blob URL 下载，回退 dataURL
+                canvas.toBlob(function(blob){
+                    if (blob){
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = '光核安利漂流瓶_分享图.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+                        showToast('✅ 图片已保存！', 'success');
+                    } else {
+                        var a2 = document.createElement('a');
+                        a2.href = dataUrl;
+                        a2.download = '光核安利漂流瓶_分享图.png';
+                        document.body.appendChild(a2);
+                        a2.click();
+                        document.body.removeChild(a2);
+                        showToast('✅ 图片已保存！', 'success');
+                    }
+                }, 'image/png');
             }
         }).catch(function(e){
             console.error('html2canvas error:', e);
-            showToast('生成失败：' + e.message, 'error');
+            showToast('生成失败：' + (e.message || '未知错误，请检查网络后重试'), 'error');
         });
     }
 
@@ -620,13 +633,42 @@ function smartShare(type, targetId, title, text){
     }
 }
 
+/* 通用复制文本（多层 fallback） */
+function copyText(text){
+    // 1. 现代 Clipboard API（需要 HTTPS 或 localhost）
+    if (navigator.clipboard && navigator.clipboard.writeText){
+        return navigator.clipboard.writeText(text);
+    }
+    // 2. 旧版 execCommand（HTTP 环境也能用）
+    return new Promise(function(resolve, reject){
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        ta.style.top = '-9999px';
+        ta.setAttribute('readonly', '');
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        try {
+            var ok = document.execCommand('copy');
+            document.body.removeChild(ta);
+            if (ok) resolve();
+            else reject(new Error('execCommand 返回 false'));
+        } catch(e){
+            document.body.removeChild(ta);
+            reject(e);
+        }
+    });
+}
+
 function fallbackCopyLink(link, type, targetId, hint){
     var msg = hint || '📋 链接已复制！好友注册后你能获得拉新奖励～';
-    navigator.clipboard.writeText(link).then(function(){
+    copyText(link).then(function(){
         showToast(msg, 'success');
         trackShare(type, targetId);
     }).catch(function(){
-        // 剪贴板也不可用（极少见），弹窗让用户手动复制
+        // 终极 fallback：弹窗让用户手动复制
         var p = prompt('请手动复制以下链接分享给好友：', link);
         if (p || p === link) trackShare(type, targetId);
     });
@@ -711,11 +753,163 @@ function shareCardImage(){
 
 function copyCardLink(){
     var link = location.origin + '/s/wall/' + (window._currentUserId || '') + '?via=' + (window._referralCode || window._currentUserId || '');
-    navigator.clipboard.writeText(link).then(function(){
+    copyText(link).then(function(){
         showToast('✅ 链接已复制！好友注册后你能获得拉新奖励', 'success');
         trackShare('wall', window._currentUserId);
     }).catch(function(){
         prompt('复制以下链接分享给好友：', link);
         trackShare('wall', window._currentUserId);
+    });
+}
+
+/* ══════════════════════════════════════════════
+   单瓶分享图生成
+   ══════════════════════════════════════════════ */
+
+var _bottleShareQR = null;
+var _bottleShareBlob = null;
+
+/* 打开单瓶分享图弹窗 */
+function openBottleShareCard(bid, title){
+    var overlay = document.getElementById('bottleShareCardOverlay');
+    if (!overlay) return;
+    window._bottleShareTitle = title || '';
+
+    // 生成二维码
+    var qrBox = document.getElementById('bottleShareCardQR');
+    if (qrBox){
+        qrBox.innerHTML = '';
+        var shareUrl = location.origin + '/s/bottle/' + bid + '?via=' + (window._referralCode || window._currentUserId || '');
+        try {
+            _bottleShareQR = new QRCode(qrBox, {
+                text: shareUrl,
+                width: 180,
+                height: 180,
+                colorDark: '#050d1a',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.L
+            });
+        } catch(e){
+            var fallback = document.createElement('img');
+            fallback.src = 'https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=' + encodeURIComponent(shareUrl);
+            fallback.width = 180; fallback.height = 180;
+            fallback.alt = 'QR';
+            qrBox.appendChild(fallback);
+        }
+    }
+
+    overlay.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+
+    // 预渲染分享图
+    _bottleShareBlob = null;
+    setTimeout(function(){
+        var inner = document.getElementById('bottleShareCardInner');
+        if (!inner || typeof html2canvas === 'undefined') return;
+        html2canvas(inner, {useCORS:true, allowTaint:false, backgroundColor:null, scale:2})
+        .then(function(cvs){
+            cvs.toBlob(function(blob){ _bottleShareBlob = blob; }, 'image/png');
+        }).catch(function(e){
+            console.error('Bottle share card pre-render error:', e);
+        });
+    }, 400);
+}
+
+/* 关闭单瓶分享图弹窗 */
+function closeBottleShareCard(){
+    _bottleShareBlob = null;
+    var overlay = document.getElementById('bottleShareCardOverlay');
+    if (overlay){
+        overlay.style.display = 'none';
+    }
+    document.body.style.overflow = '';
+}
+
+/* 保存单瓶分享图 */
+function saveBottleShareCard(){
+    var inner = document.getElementById('bottleShareCardInner');
+    if (!inner) return;
+
+    // 确保所有图片加载完毕
+    var imgs = inner.querySelectorAll('img');
+    var total = imgs.length;
+    var loaded = 0;
+
+    function doCapture(){
+        if (typeof html2canvas === 'undefined'){
+            showToast('⏳ 图片工具加载中，请稍后重试', 'warning');
+            return;
+        }
+        html2canvas(inner, {
+            useCORS: true,
+            allowTaint: false,
+            backgroundColor: null,
+            scale: 2
+        }).then(function(canvas){
+            var dataUrl = canvas.toDataURL('image/png');
+            if (/Mobi|Android|iPhone/i.test(navigator.userAgent)){
+                showImageForSave(dataUrl);
+            } else {
+                // 桌面端：优先 blob 下载，回退 dataURL
+                canvas.toBlob(function(blob){
+                    if (blob){
+                        var url = URL.createObjectURL(blob);
+                        var a = document.createElement('a');
+                        a.href = url;
+                        a.download = '光核漂流瓶_' + (window._bottleShareTitle || '分享') + '.png';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        setTimeout(function(){ URL.revokeObjectURL(url); }, 5000);
+                        showToast('✅ 图片已保存！', 'success');
+                    } else {
+                        // blob 失败，回退 dataURL
+                        var a2 = document.createElement('a');
+                        a2.href = dataUrl;
+                        a2.download = '光核漂流瓶_分享图.png';
+                        document.body.appendChild(a2);
+                        a2.click();
+                        document.body.removeChild(a2);
+                        showToast('✅ 图片已保存！', 'success');
+                    }
+                }, 'image/png');
+            }
+        }).catch(function(e){
+            console.error('html2canvas error:', e);
+            showToast('生成失败：' + (e.message || '未知错误'), 'error');
+        });
+    }
+
+    if (total === 0){
+        doCapture();
+    } else {
+        var timer = setTimeout(function(){ doCapture(); }, 4000);
+        imgs.forEach(function(img){
+            if (img.complete){
+                loaded++;
+                if (loaded >= total){ clearTimeout(timer); doCapture(); }
+            } else {
+                img.addEventListener('load', function(){
+                    loaded++;
+                    if (loaded >= total){ clearTimeout(timer); doCapture(); }
+                });
+                img.addEventListener('error', function(){
+                    loaded++;
+                    if (loaded >= total){ clearTimeout(timer); doCapture(); }
+                });
+            }
+        });
+    }
+}
+
+/* 复制单瓶分享链接 */
+function copyBottleShareLink(bid){
+    var link = location.origin + '/s/bottle/' + bid + '?via=' + (window._referralCode || window._currentUserId || '');
+    copyText(link).then(function(){
+        showToast('✅ 链接已复制！', 'success');
+        trackShare('bottle', bid);
+    }).catch(function(){
+        prompt('复制以下链接分享给好友：', link);
+        trackShare('bottle', bid);
     });
 }

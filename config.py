@@ -60,7 +60,7 @@ class Config:
     DAILY_THROW_LIMIT = 5
 
     # 每日基础打捞次数
-    DAILY_SALVAGE_LIMIT = 1
+    DAILY_SALVAGE_LIMIT = 7
 
     # 任务奖励（次数）
     TASK_THROW_REWARD = 1       # 投递一个瓶子
@@ -69,7 +69,7 @@ class Config:
     TASK_REFERRAL_DAILY_MAX = 2  # 每日拉新上限（人）
 
     # 每日打捞总上限（999+ 给测试账号留空间）
-    DAILY_SALVAGE_MAX = 5
+    DAILY_SALVAGE_MAX = 12
 
     # 字数限制
     TITLE_MIN_LENGTH = 1
